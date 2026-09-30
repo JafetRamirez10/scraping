@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Prospecting;
 
 use App\Models\AiSetting;
+use App\Models\EmailTemplate;
 use App\Models\Prospect;
 use App\Models\ProspectEmail;
 use App\Services\Ai\DeepSeekClient;
@@ -26,8 +27,24 @@ class PersonalizeProspectEmailAction
     public function execute(ProspectEmail $prospectEmail): array
     {
         $prospectEmail->loadMissing(['prospect.category', 'template']);
-        $prospect = $prospectEmail->prospect;
-        $template = $prospectEmail->template;
+
+        return $this->personalize(
+            prospect: $prospectEmail->prospect,
+            template: $prospectEmail->template,
+            step: (int) $prospectEmail->step,
+        );
+    }
+
+    /**
+     * @return array{subject: string, body_html: string, body_text: string, personalized_by_ai: bool}
+     */
+    public function personalize(
+        Prospect $prospect,
+        EmailTemplate $template,
+        int $step,
+        bool $force = false,
+    ): array {
+        $prospect->loadMissing('category');
 
         $baseSubject = $this->templateRenderer->renderSubject($template, $prospect);
         $baseHtml = $this->templateRenderer->renderHtmlBase($template, $prospect);
@@ -42,7 +59,7 @@ class PersonalizeProspectEmailAction
 
         $settings = AiSetting::current();
 
-        if (! $settings->deepseek_enabled) {
+        if (! $force && ! $settings->deepseek_enabled) {
             return $fallback;
         }
 
@@ -50,7 +67,7 @@ class PersonalizeProspectEmailAction
             return $fallback;
         }
 
-        if (! $this->withinDailyLimit($settings->daily_limit)) {
+        if (! $force && ! $this->withinDailyLimit($settings->daily_limit)) {
             Log::warning('DeepSeek daily personalization limit reached');
 
             return $fallback;
@@ -59,7 +76,7 @@ class PersonalizeProspectEmailAction
         try {
             $userPrompt = $this->buildUserPrompt(
                 prospect: $prospect,
-                step: (int) $prospectEmail->step,
+                step: $step,
                 baseSubject: $baseSubject,
                 baseHtml: $baseHtml,
                 baseText: $baseText,
@@ -84,7 +101,9 @@ class PersonalizeProspectEmailAction
             $bodyHtml = $this->ensureUnsubscribePlaceholder($parsed['body_html'], $baseHtml, isHtml: true);
             $bodyText = $this->ensureUnsubscribePlaceholder($parsed['body_text'], $baseText, isHtml: false);
 
-            $this->incrementDailyUsage();
+            if (! $force) {
+                $this->incrementDailyUsage();
+            }
 
             return [
                 'subject' => $parsed['subject'],
@@ -94,8 +113,9 @@ class PersonalizeProspectEmailAction
             ];
         } catch (Throwable $exception) {
             Log::error('DeepSeek personalization failed', [
-                'prospect_email_id' => $prospectEmail->id,
                 'prospect_id' => $prospect->id,
+                'template_id' => $template->id,
+                'step' => $step,
                 'message' => $exception->getMessage(),
             ]);
 

@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Actions\Prospecting\SendDeepSeekTestEmailAction;
 use App\Models\AiSetting;
+use App\Models\EmailTemplate;
+use App\Models\Prospect;
+use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 
 class ManageAiSettings extends Page implements HasForms
@@ -102,5 +107,75 @@ class ManageAiSettings extends Page implements HasForms
             ->title('Configuración de IA guardada')
             ->success()
             ->send();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('testDeepSeek')
+                ->label('Probar IA')
+                ->icon('heroicon-o-beaker')
+                ->color('gray')
+                ->modalHeading('Probar personalización DeepSeek')
+                ->modalDescription('Usa una plantilla y un prospecto real, genera con DeepSeek y te envía el correo de prueba.')
+                ->form([
+                    Forms\Components\Select::make('email_template_id')
+                        ->label('Plantilla')
+                        ->options(
+                            EmailTemplate::query()
+                                ->orderBy('step')
+                                ->get()
+                                ->mapWithKeys(fn (EmailTemplate $template) => [
+                                    $template->id => "Paso {$template->step} — {$template->name}",
+                                ])
+                                ->all()
+                        )
+                        ->required()
+                        ->searchable(),
+                    Forms\Components\Select::make('prospect_id')
+                        ->label('Prospecto')
+                        ->options(
+                            Prospect::query()
+                                ->with('category')
+                                ->latest('id')
+                                ->limit(100)
+                                ->get()
+                                ->mapWithKeys(fn (Prospect $prospect) => [
+                                    $prospect->id => trim(($prospect->company_name ?: 'Sin nombre').' — '.$prospect->email),
+                                ])
+                                ->all()
+                        )
+                        ->required()
+                        ->searchable(),
+                    Forms\Components\TextInput::make('email')
+                        ->label('Correo destino')
+                        ->email()
+                        ->required()
+                        ->default(fn (): ?string => Auth::user()?->email),
+                ])
+                ->action(function (array $data): void {
+                    $template = EmailTemplate::query()->findOrFail($data['email_template_id']);
+                    $prospect = Prospect::query()->findOrFail($data['prospect_id']);
+
+                    $result = app(SendDeepSeekTestEmailAction::class)->execute(
+                        $template,
+                        $prospect,
+                        $data['email'],
+                    );
+
+                    Notification::make()
+                        ->title($result['personalized_by_ai']
+                            ? 'Prueba IA enviada'
+                            : 'Prueba enviada sin personalización')
+                        ->body(
+                            ($result['personalized_by_ai']
+                                ? 'DeepSeek personalizó el mensaje. '
+                                : 'No se personalizó (revisa API key/logs). ').
+                            'Asunto: '.$result['subject']
+                        )
+                        ->{$result['personalized_by_ai'] ? 'success' : 'warning'}()
+                        ->send();
+                }),
+        ];
     }
 }
