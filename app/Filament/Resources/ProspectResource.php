@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources;
 
+use App\Enums\ProspectStatus;
 use App\Filament\Resources\ProspectResource\Pages;
 use App\Models\Prospect;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProspectResource extends Resource
 {
@@ -29,6 +31,10 @@ class ProspectResource extends Resource
                 Tables\Columns\TextColumn::make('company_name')->label('Empresa')->searchable(),
                 Tables\Columns\TextColumn::make('email')->label('Email')->searchable(),
                 Tables\Columns\TextColumn::make('category.name')->label('Categoría'),
+                Tables\Columns\TextColumn::make('sequence.current_step')
+                    ->label('Paso')
+                    ->formatStateUsing(fn ($state) => $state ? "Paso {$state}" : '—')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('email_quality')
                     ->label('Calidad')
                     ->badge(),
@@ -44,9 +50,25 @@ class ProspectResource extends Resource
                     ->label('Categoría'),
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Estado')
-                    ->options(collect(\App\Enums\ProspectStatus::cases())->mapWithKeys(
-                        fn (\App\Enums\ProspectStatus $case) => [$case->value => $case->getLabel()]
+                    ->options(collect(ProspectStatus::cases())->mapWithKeys(
+                        fn (ProspectStatus $case) => [$case->value => $case->getLabel()]
                     )->all()),
+                Tables\Filters\SelectFilter::make('current_step')
+                    ->label('Paso')
+                    ->options([
+                        1 => 'Paso 1',
+                        2 => 'Paso 2',
+                        3 => 'Paso 3',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            filled($data['value'] ?? null),
+                            fn (Builder $q) => $q->whereHas(
+                                'sequence',
+                                fn (Builder $sequence) => $sequence->where('current_step', (int) $data['value'])
+                            )
+                        );
+                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
