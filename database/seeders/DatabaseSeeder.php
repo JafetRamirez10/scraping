@@ -48,22 +48,22 @@ class DatabaseSeeder extends Seeder
                 'step' => 1,
                 'name' => 'Prospectación inicial',
                 'subject' => '{{ company_name }} — propuesta breve',
-                'body_html' => '<p>Hola,</p><p>Soy Jafet Ramirez. Me puse en contacto porque vi {{ company_name }} y creo que podemos aportar valor en {{ category }}.</p><p>¿Tendrías 10 minutos esta semana para una llamada breve?</p><p>Saludos,<br>Jafet Ramirez<br>soporte@jramirezr.com</p><p><a href="{{ unsubscribe_url }}">Darme de baja</a></p>',
-                'body_text' => "Hola,\n\nSoy Jafet Ramirez. Me puse en contacto porque vi {{ company_name }} y creo que podemos aportar valor en {{ category }}.\n\n¿Tendrías 10 minutos esta semana?\n\nSaludos,\nJafet Ramirez\n\nDarme de baja: {{ unsubscribe_url }}",
+                'body_html' => '<p>Hola,</p><p>Soy Jafet Ramirez. Me puse en contacto porque vi {{ company_name }} y creo que podemos aportar valor en {{ category }}.</p><p>¿Tendrías 10 minutos esta semana para una llamada breve?</p><p>Saludos,<br>Jafet Ramirez<br>soporte@jramirezr.com</p>',
+                'body_text' => "Hola,\n\nSoy Jafet Ramirez. Me puse en contacto porque vi {{ company_name }} y creo que podemos aportar valor en {{ category }}.\n\n¿Tendrías 10 minutos esta semana?\n\nSaludos,\nJafet Ramirez",
             ],
             [
                 'step' => 2,
                 'name' => 'Seguimiento',
                 'subject' => 'Re: {{ company_name }} — información adicional',
-                'body_html' => '<p>Hola de nuevo,</p><p>Te escribo por si no viste mi mensaje anterior sobre {{ company_name }}.</p><p>Con gusto comparto más detalles si te interesa.</p><p>Saludos,<br>Jafet Ramirez</p><p><a href="{{ unsubscribe_url }}">Darme de baja</a></p>',
-                'body_text' => "Hola de nuevo,\n\nTe escribo por si no viste mi mensaje anterior sobre {{ company_name }}.\n\nSaludos,\nJafet Ramirez\n\nDarme de baja: {{ unsubscribe_url }}",
+                'body_html' => '<p>Hola de nuevo,</p><p>Te escribo por si no viste mi mensaje anterior sobre {{ company_name }}.</p><p>Con gusto comparto más detalles si te interesa.</p><p>Saludos,<br>Jafet Ramirez</p>',
+                'body_text' => "Hola de nuevo,\n\nTe escribo por si no viste mi mensaje anterior sobre {{ company_name }}.\n\nSaludos,\nJafet Ramirez",
             ],
             [
                 'step' => 3,
                 'name' => 'Último contacto',
                 'subject' => 'Última nota para {{ company_name }}',
-                'body_html' => '<p>Hola,</p><p>Este será mi último mensaje. Si en el futuro deseas retomar la conversación, estaré disponible.</p><p>Saludos,<br>Jafet Ramirez</p><p><a href="{{ unsubscribe_url }}">Darme de baja</a></p>',
-                'body_text' => "Hola,\n\nEste será mi último mensaje. Si deseas retomar la conversación, estaré disponible.\n\nSaludos,\nJafet Ramirez\n\nDarme de baja: {{ unsubscribe_url }}",
+                'body_html' => '<p>Hola,</p><p>Este será mi último mensaje. Si en el futuro deseas retomar la conversación, estaré disponible.</p><p>Saludos,<br>Jafet Ramirez</p>',
+                'body_text' => "Hola,\n\nEste será mi último mensaje. Si deseas retomar la conversación, estaré disponible.\n\nSaludos,\nJafet Ramirez",
             ],
         ];
 

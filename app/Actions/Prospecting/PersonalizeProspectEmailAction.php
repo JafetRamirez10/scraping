@@ -52,8 +52,12 @@ class PersonalizeProspectEmailAction
 
         $fallback = [
             'subject' => $baseSubject,
-            'body_html' => $this->templateRenderer->finalizeUnsubscribe($baseHtml, $prospect),
-            'body_text' => $this->templateRenderer->finalizeUnsubscribe($baseText, $prospect),
+            'body_html' => $this->stripUnsubscribeCopy(
+                $this->templateRenderer->finalizeUnsubscribe($baseHtml, $prospect)
+            ),
+            'body_text' => $this->stripUnsubscribeCopy(
+                $this->templateRenderer->finalizeUnsubscribe($baseText, $prospect)
+            ),
             'personalized_by_ai' => false,
         ];
 
@@ -98,8 +102,8 @@ class PersonalizeProspectEmailAction
                 return $fallback;
             }
 
-            $bodyHtml = $this->ensureUnsubscribePlaceholder($parsed['body_html'], $baseHtml, isHtml: true);
-            $bodyText = $this->ensureUnsubscribePlaceholder($parsed['body_text'], $baseText, isHtml: false);
+            $bodyHtml = $this->stripUnsubscribeCopy($parsed['body_html']);
+            $bodyText = $this->stripUnsubscribeCopy($parsed['body_text']);
 
             if (! $force) {
                 $this->incrementDailyUsage();
@@ -107,8 +111,12 @@ class PersonalizeProspectEmailAction
 
             return [
                 'subject' => $parsed['subject'],
-                'body_html' => $this->templateRenderer->finalizeUnsubscribe($bodyHtml, $prospect),
-                'body_text' => $this->templateRenderer->finalizeUnsubscribe($bodyText, $prospect),
+                'body_html' => $this->stripUnsubscribeCopy(
+                    $this->templateRenderer->finalizeUnsubscribe($bodyHtml, $prospect)
+                ),
+                'body_text' => $this->stripUnsubscribeCopy(
+                    $this->templateRenderer->finalizeUnsubscribe($bodyText, $prospect)
+                ),
                 'personalized_by_ai' => true,
             ];
         } catch (Throwable $exception) {
@@ -192,19 +200,14 @@ class PersonalizeProspectEmailAction
         ];
     }
 
-    private function ensureUnsubscribePlaceholder(string $content, string $fallback, bool $isHtml): string
+    private function stripUnsubscribeCopy(string $content): string
     {
-        if (str_contains($content, '{{ unsubscribe_url }}')) {
-            return $content;
-        }
+        $content = preg_replace('/<p[^>]*>\s*<a[^>]*>\s*(Darme de baja|Cancelar suscripci[oó]n|Unsubscribe)\s*<\/a>\s*<\/p>/iu', '', $content) ?? $content;
+        $content = preg_replace('/<a[^>]*>\s*(Darme de baja|Cancelar suscripci[oó]n|Unsubscribe)\s*<\/a>/iu', '', $content) ?? $content;
+        $content = preg_replace('/\n?\s*(Darme de baja|Cancelar suscripci[oó]n|Unsubscribe)\s*:\s*\{\{\s*unsubscribe_url\s*\}\}\s*/iu', "\n", $content) ?? $content;
+        $content = str_replace(['{{ unsubscribe_url }}', '{{unsubscribe_url}}'], '', $content);
 
-        if (! str_contains($fallback, '{{ unsubscribe_url }}')) {
-            return $content;
-        }
-
-        return $isHtml
-            ? rtrim($content)."\n<p><a href=\"{{ unsubscribe_url }}\">Darme de baja</a></p>"
-            : rtrim($content)."\n\nDarme de baja: {{ unsubscribe_url }}";
+        return trim($content);
     }
 
     private function withinDailyLimit(int $dailyLimit): bool

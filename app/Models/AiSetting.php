@@ -45,7 +45,7 @@ Reglas:
 - Mantén el tono profesional, breve y natural. No seas genérico.
 - Usa solo datos del contexto; no inventes métricas, clientes ni logros.
 - Conserva la intención y el CTA de la plantilla.
-- Debes incluir exactamente el placeholder {{ unsubscribe_url }} en el HTML y en el texto.
+- No incluyas enlaces ni texto de darse de baja, cancelar suscripción o unsubscribe.
 - Responde SOLO JSON válido con las claves: subject, body_html, body_text.
 PROMPT;
     }
