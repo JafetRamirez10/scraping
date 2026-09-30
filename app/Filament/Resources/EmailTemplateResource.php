@@ -54,6 +54,9 @@ class EmailTemplateResource extends Resource
             Forms\Components\Toggle::make('is_active')
                 ->label('Activa')
                 ->default(true),
+            Forms\Components\Placeholder::make('ai_note')
+                ->label('Personalización IA')
+                ->content('Si DeepSeek está activo en Prospección → IA / DeepSeek, esta plantilla se usa como base y el texto final puede variar por prospecto.'),
         ]);
     }
 

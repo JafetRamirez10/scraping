@@ -49,4 +49,13 @@ return [
         'webhook_secret' => env('BREVO_WEBHOOK_SECRET'),
     ],
 
+    'deepseek' => [
+        'key' => env('DEEPSEEK_API_KEY'),
+        'base_url' => env('DEEPSEEK_BASE_URL', 'https://api.deepseek.com'),
+        'model' => env('DEEPSEEK_MODEL', 'deepseek-chat'),
+        'timeout' => (int) env('DEEPSEEK_TIMEOUT', 30),
+        'temperature' => (float) env('DEEPSEEK_TEMPERATURE', 0.7),
+        'daily_limit' => (int) env('DEEPSEEK_DAILY_LIMIT', 200),
+    ],
+
 ];

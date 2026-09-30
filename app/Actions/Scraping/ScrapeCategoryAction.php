@@ -153,6 +153,8 @@ class ScrapeCategoryAction
                 'email_source' => $emailData->source,
                 'status' => ProspectStatus::Discovered,
                 'metadata' => [
+                    'title' => $result->title,
+                    'url' => $result->url,
                     'snippet' => $result->snippet,
                 ],
             ]);

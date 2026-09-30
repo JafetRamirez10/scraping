@@ -33,10 +33,21 @@ class ViewProspect extends ViewRecord
                     ->schema([
                         TextEntry::make('step')->label('Paso'),
                         TextEntry::make('status')->badge(),
+                        TextEntry::make('personalized_by_ai')
+                            ->label('Origen')
+                            ->badge()
+                            ->formatStateUsing(fn ($state) => $state ? 'IA' : 'Plantilla')
+                            ->color(fn ($state) => $state ? 'success' : 'gray'),
+                        TextEntry::make('rendered_subject')->label('Asunto enviado')->placeholder('—'),
                         TextEntry::make('scheduled_at')->dateTime()->label('Programado'),
                         TextEntry::make('sent_at')->dateTime()->label('Enviado'),
                         TextEntry::make('opened_at')->dateTime()->label('Abierto'),
                         TextEntry::make('clicked_at')->dateTime()->label('Clic'),
+                        TextEntry::make('rendered_body_html')
+                            ->label('Cuerpo enviado')
+                            ->html()
+                            ->columnSpanFull()
+                            ->placeholder('—'),
                     ])
                     ->columns(3),
             ]),

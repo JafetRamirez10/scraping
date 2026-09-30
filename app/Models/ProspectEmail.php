@@ -23,6 +23,10 @@ class ProspectEmail extends Model
         'replied_at',
         'provider_message_id',
         'error_message',
+        'rendered_subject',
+        'rendered_body_html',
+        'rendered_body_text',
+        'personalized_by_ai',
     ];
 
     protected function casts(): array
@@ -34,6 +38,7 @@ class ProspectEmail extends Model
             'opened_at' => 'datetime',
             'clicked_at' => 'datetime',
             'replied_at' => 'datetime',
+            'personalized_by_ai' => 'boolean',
         ];
     }
 

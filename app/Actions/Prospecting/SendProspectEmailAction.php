@@ -8,7 +8,6 @@ use App\Enums\ProspectEmailStatus;
 use App\Mail\ProspectOutreachMail;
 use App\Models\ProspectEmail;
 use App\Models\SuppressionListEntry;
-use App\Services\Mail\ProspectTemplateRenderer;
 use App\Services\Prospecting\EmailSendWindowService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -17,7 +16,7 @@ use Throwable;
 class SendProspectEmailAction
 {
     public function __construct(
-        private readonly ProspectTemplateRenderer $templateRenderer,
+        private readonly PersonalizeProspectEmailAction $personalizeProspectEmail,
         private readonly EmailSendWindowService $sendWindowService,
     ) {}
 
@@ -58,12 +57,14 @@ class SendProspectEmailAction
             return false;
         }
 
+        $rendered = $this->personalizeProspectEmail->execute($prospectEmail);
+
         try {
             $mailable = new ProspectOutreachMail(
                 prospectEmail: $prospectEmail,
-                subjectLine: $this->templateRenderer->renderSubject($prospectEmail->template, $prospect),
-                htmlBody: $this->templateRenderer->renderHtml($prospectEmail->template, $prospect),
-                textBody: $this->templateRenderer->renderText($prospectEmail->template, $prospect),
+                subjectLine: $rendered['subject'],
+                htmlBody: $rendered['body_html'],
+                textBody: $rendered['body_text'],
             );
 
             Mail::to($prospect->email, $prospect->company_name)->send($mailable);
@@ -71,6 +72,10 @@ class SendProspectEmailAction
             $prospectEmail->update([
                 'status' => ProspectEmailStatus::Sent,
                 'sent_at' => now(),
+                'rendered_subject' => $rendered['subject'],
+                'rendered_body_html' => $rendered['body_html'],
+                'rendered_body_text' => $rendered['body_text'],
+                'personalized_by_ai' => $rendered['personalized_by_ai'],
             ]);
 
             $prospectEmail->sequence->update(['current_step' => $prospectEmail->step]);

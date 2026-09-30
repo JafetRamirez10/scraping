@@ -22,18 +22,37 @@ class ProspectTemplateRenderer
 
     public function renderHtml(EmailTemplate $template, object $prospect): string
     {
-        $body = $this->replaceVariables($template->body_html, $prospect);
-
-        return $this->replaceUnsubscribeUrl($body, $prospect);
+        return $this->finalizeUnsubscribe(
+            $this->renderHtmlBase($template, $prospect),
+            $prospect,
+        );
     }
 
     public function renderText(EmailTemplate $template, object $prospect): string
     {
-        $body = $template->body_text
-            ? $this->replaceVariables($template->body_text, $prospect)
-            : strip_tags($this->renderHtml($template, $prospect));
+        return $this->finalizeUnsubscribe(
+            $this->renderTextBase($template, $prospect),
+            $prospect,
+        );
+    }
 
-        return $this->replaceUnsubscribeUrl($body, $prospect);
+    public function renderHtmlBase(EmailTemplate $template, object $prospect): string
+    {
+        return $this->replaceVariables($template->body_html, $prospect);
+    }
+
+    public function renderTextBase(EmailTemplate $template, object $prospect): string
+    {
+        if ($template->body_text) {
+            return $this->replaceVariables($template->body_text, $prospect);
+        }
+
+        return strip_tags($this->renderHtmlBase($template, $prospect));
+    }
+
+    public function finalizeUnsubscribe(string $content, object $prospect): string
+    {
+        return $this->replaceUnsubscribeUrl($content, $prospect);
     }
 
     public function renderSubjectPreview(EmailTemplate $template): string
