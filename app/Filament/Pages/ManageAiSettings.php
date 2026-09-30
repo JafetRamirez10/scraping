@@ -154,27 +154,54 @@ class ManageAiSettings extends Page implements HasForms
                         ->default(fn (): ?string => Auth::user()?->email),
                 ])
                 ->action(function (array $data): void {
-                    $template = EmailTemplate::query()->findOrFail($data['email_template_id']);
-                    $prospect = Prospect::query()->findOrFail($data['prospect_id']);
+                    try {
+                        if (! filled(config('services.deepseek.key'))) {
+                            Notification::make()
+                                ->title('Falta DEEPSEEK_API_KEY')
+                                ->body('Agrégala en el .env de producción y ejecuta: php artisan config:clear')
+                                ->danger()
+                                ->send();
 
-                    $result = app(SendDeepSeekTestEmailAction::class)->execute(
-                        $template,
-                        $prospect,
-                        $data['email'],
-                    );
+                            return;
+                        }
 
-                    Notification::make()
-                        ->title($result['personalized_by_ai']
-                            ? 'Prueba IA enviada'
-                            : 'Prueba enviada sin personalización')
-                        ->body(
-                            ($result['personalized_by_ai']
-                                ? 'DeepSeek personalizó el mensaje. '
-                                : 'No se personalizó (revisa API key/logs). ').
-                            'Asunto: '.$result['subject']
-                        )
-                        ->{$result['personalized_by_ai'] ? 'success' : 'warning'}()
-                        ->send();
+                        $template = EmailTemplate::query()->findOrFail($data['email_template_id']);
+                        $prospect = Prospect::query()->findOrFail($data['prospect_id']);
+
+                        $result = app(SendDeepSeekTestEmailAction::class)->execute(
+                            $template,
+                            $prospect,
+                            $data['email'],
+                        );
+
+                        Notification::make()
+                            ->title($result['personalized_by_ai']
+                                ? 'Prueba IA enviada'
+                                : 'Prueba enviada sin personalización')
+                            ->body(
+                                ($result['personalized_by_ai']
+                                    ? 'DeepSeek personalizó el mensaje. '
+                                    : 'No se personalizó (revisa API key/logs). ').
+                                'Asunto: '.$result['subject']
+                            )
+                            ->{$result['personalized_by_ai'] ? 'success' : 'warning'}()
+                            ->send();
+                    } catch (\Illuminate\Validation\ValidationException $exception) {
+                        $message = collect($exception->errors())->flatten()->first()
+                            ?: 'No se pudo completar la prueba.';
+
+                        Notification::make()
+                            ->title('Error en la prueba')
+                            ->body((string) $message)
+                            ->danger()
+                            ->send();
+                    } catch (\Throwable $exception) {
+                        Notification::make()
+                            ->title('Error inesperado en la prueba')
+                            ->body($exception->getMessage())
+                            ->danger()
+                            ->send();
+                    }
                 }),
         ];
     }
