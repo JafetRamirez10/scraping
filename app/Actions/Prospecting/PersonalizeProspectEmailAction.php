@@ -151,9 +151,10 @@ class PersonalizeProspectEmailAction
             'search_url' => $metadata['url'] ?? $prospect->website_url,
         ];
 
-        return "Personaliza este correo de prospección (paso {$step}).\n"
+        return "Personaliza este cold email de prospección (paso {$step}).\n"
+            ."Prioriza un subject frío que invite a abrir, sin sonar a publicidad.\n"
             ."Contexto JSON:\n".json_encode($context, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)."\n\n"
-            ."Plantilla asunto:\n{$baseSubject}\n\n"
+            ."Plantilla asunto (puedes reescribirla por completo):\n{$baseSubject}\n\n"
             ."Plantilla HTML:\n{$baseHtml}\n\n"
             ."Plantilla texto:\n{$baseText}\n\n"
             .'Devuelve JSON con subject, body_html y body_text.';
