@@ -20,22 +20,51 @@ class SerpApiSearchProvider implements SearchProviderInterface
 
     public function search(Category $category): SearchResponse
     {
-        try {
-            $results = $this->client->search([
-                'engine' => config('services.serpapi.engine', 'google'),
-                'q' => $category->search_query,
-                'location' => config('services.serpapi.location', 'Mexico'),
-                'gl' => config('services.serpapi.gl', 'mx'),
-                'hl' => config('services.serpapi.hl', 'es'),
-                'num' => config('services.serpapi.num_results', 10),
-            ]);
+        $pages = max(1, (int) config('services.serpapi.pages', 5));
+        $numResults = max(1, (int) config('services.serpapi.num_results', 10));
 
-            $searchId = isset($results->search_metadata->id)
-                ? (string) $results->search_metadata->id
-                : null;
+        $items = [];
+        $seenUrls = [];
+        $searchId = null;
+
+        try {
+            for ($page = 0; $page < $pages; $page++) {
+                $start = $page * $numResults;
+
+                $results = $this->client->search([
+                    'engine' => config('services.serpapi.engine', 'google'),
+                    'q' => $category->search_query,
+                    'location' => config('services.serpapi.location', 'Mexico'),
+                    'gl' => config('services.serpapi.gl', 'mx'),
+                    'hl' => config('services.serpapi.hl', 'es'),
+                    'num' => $numResults,
+                    'start' => $start,
+                ]);
+
+                if ($searchId === null && isset($results->search_metadata->id)) {
+                    $searchId = (string) $results->search_metadata->id;
+                }
+
+                $pageItems = $this->parseOrganicResults($results);
+
+                if ($pageItems === []) {
+                    break;
+                }
+
+                foreach ($pageItems as $item) {
+                    $normalizedUrl = rtrim(strtolower($item->url), '/');
+
+                    if (isset($seenUrls[$normalizedUrl])) {
+                        continue;
+                    }
+
+                    $seenUrls[$normalizedUrl] = true;
+                    $items[] = $item;
+                }
+            }
 
             return new SearchResponse(
-                items: $this->parseOrganicResults($results),
+                items: $items,
                 searchId: $searchId,
             );
         } catch (SerpApiException $exception) {

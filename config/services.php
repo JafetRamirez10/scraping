@@ -43,6 +43,7 @@ return [
         'gl' => env('SERPAPI_GL', 'mx'),
         'hl' => env('SERPAPI_HL', 'es'),
         'num_results' => (int) env('SERPAPI_NUM_RESULTS', 10),
+        'pages' => (int) env('SERPAPI_PAGES', 5),
     ],
 
     'brevo' => [
