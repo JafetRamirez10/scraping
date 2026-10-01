@@ -21,7 +21,8 @@ class SerpApiSearchProvider implements SearchProviderInterface
     public function search(Category $category): SearchResponse
     {
         $pages = max(1, (int) config('services.serpapi.pages', 5));
-        $numResults = max(1, (int) config('services.serpapi.num_results', 10));
+        // Google SERP pages are typically 10 organic results; keep start offsets aligned to that.
+        $resultsPerPage = 10;
 
         $items = [];
         $seenUrls = [];
@@ -29,7 +30,7 @@ class SerpApiSearchProvider implements SearchProviderInterface
 
         try {
             for ($page = 0; $page < $pages; $page++) {
-                $start = $page * $numResults;
+                $start = $page * $resultsPerPage;
 
                 $results = $this->client->search([
                     'engine' => config('services.serpapi.engine', 'google'),
@@ -37,7 +38,7 @@ class SerpApiSearchProvider implements SearchProviderInterface
                     'location' => config('services.serpapi.location', 'Mexico'),
                     'gl' => config('services.serpapi.gl', 'mx'),
                     'hl' => config('services.serpapi.hl', 'es'),
-                    'num' => $numResults,
+                    'num' => $resultsPerPage,
                     'start' => $start,
                 ]);
 
