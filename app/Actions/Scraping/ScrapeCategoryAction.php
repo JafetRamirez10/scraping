@@ -73,12 +73,18 @@ class ScrapeCategoryAction
             Log::error('Scrape category failed', [
                 'category_id' => $category->id,
                 'scrape_run_id' => $run->id,
+                'message' => $exception->getMessage(),
             ]);
 
             $run->update([
                 'status' => ScrapeRunStatus::Failed,
-                'error_message' => 'Scrape failed',
+                'error_message' => mb_substr($exception->getMessage() ?: 'Scrape failed', 0, 250),
                 'finished_at' => now(),
+            ]);
+
+            // Avoid hammering the same due category every scheduler tick after failures.
+            $category->update([
+                'next_scrape_at' => now()->addHour(),
             ]);
         }
 
