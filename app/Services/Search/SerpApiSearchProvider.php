@@ -28,10 +28,10 @@ class SerpApiSearchProvider implements SearchProviderInterface
         $seenUrls = [];
         $searchId = null;
 
-        try {
-            for ($page = 0; $page < $pages; $page++) {
-                $start = $page * $resultsPerPage;
+        for ($page = 0; $page < $pages; $page++) {
+            $start = $page * $resultsPerPage;
 
+            try {
                 $results = $this->client->search([
                     'engine' => config('services.serpapi.engine', 'google'),
                     'q' => $category->search_query,
@@ -41,42 +41,57 @@ class SerpApiSearchProvider implements SearchProviderInterface
                     'num' => $resultsPerPage,
                     'start' => $start,
                 ]);
+            } catch (SerpApiException $exception) {
+                if ($items !== []) {
+                    Log::warning('SerpAPI pagination stopped early; continuing with partial SERP results', [
+                        'category_id' => $category->id,
+                        'page' => $page + 1,
+                        'pages_requested' => $pages,
+                        'results_collected' => count($items),
+                        'search_id' => $searchId,
+                        'message' => $exception->getMessage(),
+                    ]);
 
-                if ($searchId === null && isset($results->search_metadata->id)) {
-                    $searchId = (string) $results->search_metadata->id;
-                }
-
-                $pageItems = $this->parseOrganicResults($results);
-
-                if ($pageItems === []) {
                     break;
                 }
 
-                foreach ($pageItems as $item) {
-                    $normalizedUrl = rtrim(strtolower($item->url), '/');
+                Log::error('SerpAPI search failed before any results were collected', [
+                    'category_id' => $category->id,
+                    'page' => $page + 1,
+                    'status' => $exception->getResponseStatus(),
+                    'search_id' => $exception->getSearchId(),
+                    'message' => $exception->getMessage(),
+                ]);
 
-                    if (isset($seenUrls[$normalizedUrl])) {
-                        continue;
-                    }
-
-                    $seenUrls[$normalizedUrl] = true;
-                    $items[] = $item;
-                }
+                throw $exception;
             }
 
-            return new SearchResponse(
-                items: $items,
-                searchId: $searchId,
-            );
-        } catch (SerpApiException $exception) {
-            Log::error('SerpAPI search failed', [
-                'category_id' => $category->id,
-                'status' => $exception->getResponseStatus(),
-                'search_id' => $exception->getSearchId(),
-            ]);
+            if ($searchId === null && isset($results->search_metadata->id)) {
+                $searchId = (string) $results->search_metadata->id;
+            }
 
-            throw $exception;
+            $pageItems = $this->parseOrganicResults($results);
+
+            if ($pageItems === []) {
+                break;
+            }
+
+            foreach ($pageItems as $item) {
+                $normalizedUrl = rtrim(strtolower($item->url), '/');
+
+                if (isset($seenUrls[$normalizedUrl])) {
+                    continue;
+                }
+
+                $seenUrls[$normalizedUrl] = true;
+                $items[] = $item;
+            }
         }
+
+        return new SearchResponse(
+            items: $items,
+            searchId: $searchId,
+        );
     }
 
     public function getRemainingCredits(): ?int

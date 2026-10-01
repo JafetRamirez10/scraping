@@ -17,7 +17,7 @@ class SerpApiServiceProvider extends ServiceProvider
             return new Client(
                 (string) config('services.serpapi.key'),
                 (string) config('services.serpapi.engine', 'google'),
-                (int) config('services.serpapi.timeout', 30),
+                (int) config('services.serpapi.timeout', 60),
             );
         });
 

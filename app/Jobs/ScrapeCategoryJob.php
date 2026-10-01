@@ -20,13 +20,11 @@ class ScrapeCategoryJob implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
-    public int $tries = 3;
+    /** One attempt per dispatch; scheduler handles later retries via next_scrape_at. */
+    public int $tries = 1;
 
     /** Allow multi-page SerpAPI + website fetches. Must stay below queue retry_after. */
     public int $timeout = 900;
-
-    /** @var array<int, int> */
-    public array $backoff = [60, 300, 900];
 
     public function __construct(
         public readonly Category $category,

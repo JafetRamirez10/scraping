@@ -38,7 +38,7 @@ return [
     'serpapi' => [
         'key' => env('SERPAPI_KEY'),
         'engine' => env('SERPAPI_ENGINE', 'google'),
-        'timeout' => (int) env('SERPAPI_TIMEOUT', 30),
+        'timeout' => (int) env('SERPAPI_TIMEOUT', 60),
         'location' => env('SERPAPI_LOCATION', 'Mexico'),
         'gl' => env('SERPAPI_GL', 'mx'),
         'hl' => env('SERPAPI_HL', 'es'),

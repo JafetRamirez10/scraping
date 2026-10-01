@@ -70,10 +70,13 @@ class ScrapeCategoryAction
                 'finished_at' => now(),
             ]);
         } catch (Throwable $exception) {
+            $message = $exception->getMessage();
+
             Log::error('Scrape category failed', [
                 'category_id' => $category->id,
                 'scrape_run_id' => $run->id,
-                'message' => $exception->getMessage(),
+                'stage' => $this->failureStage($message),
+                'message' => $message,
             ]);
 
             $run->update([
@@ -89,6 +92,15 @@ class ScrapeCategoryAction
         }
 
         return $run->fresh();
+    }
+
+    private function failureStage(string $message): string
+    {
+        if (str_contains($message, 'cURL error') && str_contains($message, 'timed out')) {
+            return 'serpapi_or_http_timeout';
+        }
+
+        return 'scrape';
     }
 
     private function processSearchResult(
