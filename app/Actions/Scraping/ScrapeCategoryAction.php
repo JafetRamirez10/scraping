@@ -10,6 +10,7 @@ use App\DataTransferObjects\SearchResultItem;
 use App\Enums\ProspectStatus;
 use App\Enums\ScrapeRunStatus;
 use App\Enums\ScrapeRunUrlStatus;
+use App\Models\AiSetting;
 use App\Models\Category;
 use App\Models\Prospect;
 use App\Models\ScrapeRun;
@@ -18,6 +19,7 @@ use App\Models\SuppressionListEntry;
 use App\Services\Search\SearchProviderInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 class ScrapeCategoryAction
@@ -32,6 +34,10 @@ class ScrapeCategoryAction
 
     public function execute(Category $category): ScrapeRun
     {
+        if (! AiSetting::serpApiEnabled()) {
+            throw new RuntimeException(AiSetting::SERPAPI_DISABLED_MESSAGE);
+        }
+
         $run = ScrapeRun::query()->create([
             'category_id' => $category->id,
             'status' => ScrapeRunStatus::Running,

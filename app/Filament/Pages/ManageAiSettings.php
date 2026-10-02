@@ -28,9 +28,9 @@ class ManageAiSettings extends Page implements HasForms
 
     protected static ?string $navigationGroup = 'Prospección';
 
-    protected static ?string $navigationLabel = 'IA / DeepSeek';
+    protected static ?string $navigationLabel = 'Configuración / Integraciones';
 
-    protected static ?string $title = 'Personalización con DeepSeek';
+    protected static ?string $title = 'Configuración e integraciones';
 
     protected static ?int $navigationSort = 50;
 
@@ -41,6 +41,7 @@ class ManageAiSettings extends Page implements HasForms
         $settings = AiSetting::current();
 
         $this->form->fill([
+            'serpapi_enabled' => $settings->serpapi_enabled,
             'deepseek_enabled' => $settings->deepseek_enabled,
             'deepseek_model' => $settings->deepseek_model,
             'daily_limit' => $settings->daily_limit,
@@ -52,6 +53,14 @@ class ManageAiSettings extends Page implements HasForms
     {
         return $form
             ->schema([
+                Forms\Components\Section::make('Integraciones')
+                    ->description('Controla servicios externos usados por el scraping y la prospección.')
+                    ->schema([
+                        Forms\Components\Toggle::make('serpapi_enabled')
+                            ->label('Activar SerpAPI / SearchAPI')
+                            ->helperText('Si está desactivado, no se ejecutarán scrapes automáticos ni manuales por categoría (no se encolarán jobs de scraping).')
+                            ->inline(false),
+                    ]),
                 Forms\Components\Section::make('DeepSeek')
                     ->description('Personaliza asuntos y cuerpos usando la plantilla + datos de SerpAPI.')
                     ->schema([
@@ -95,6 +104,7 @@ class ManageAiSettings extends Page implements HasForms
         $settings = AiSetting::current();
 
         $settings->update([
+            'serpapi_enabled' => (bool) ($state['serpapi_enabled'] ?? true),
             'deepseek_enabled' => (bool) ($state['deepseek_enabled'] ?? false),
             'deepseek_model' => (string) ($state['deepseek_model'] ?? 'deepseek-chat'),
             'daily_limit' => (int) ($state['daily_limit'] ?? 200),
@@ -104,7 +114,7 @@ class ManageAiSettings extends Page implements HasForms
         ]);
 
         Notification::make()
-            ->title('Configuración de IA guardada')
+            ->title('Configuración guardada')
             ->success()
             ->send();
     }

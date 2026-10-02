@@ -6,8 +6,10 @@ namespace App\Services\Search;
 
 use App\DataTransferObjects\SearchResponse;
 use App\DataTransferObjects\SearchResultItem;
+use App\Models\AiSetting;
 use App\Models\Category;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use SerpApi\Client;
 use SerpApi\SerpApiException;
 use Throwable;
@@ -20,6 +22,10 @@ class SerpApiSearchProvider implements SearchProviderInterface
 
     public function search(Category $category): SearchResponse
     {
+        if (! AiSetting::serpApiEnabled()) {
+            throw new RuntimeException(AiSetting::SERPAPI_DISABLED_MESSAGE);
+        }
+
         $pages = max(1, (int) config('services.serpapi.pages', 5));
         // Google SERP pages are typically 10 organic results; keep start offsets aligned to that.
         $resultsPerPage = 10;

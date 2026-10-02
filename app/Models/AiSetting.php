@@ -8,8 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class AiSetting extends Model
 {
+    public const SERPAPI_DISABLED_MESSAGE = 'SerpAPI / SearchAPI está desactivado en la configuración. Actívalo en Filament (Integraciones) para ejecutar scrapes. / SerpAPI / SearchAPI is disabled in settings. Enable it in Filament (Integrations) to run scrapes.';
+
     protected $fillable = [
         'deepseek_enabled',
+        'serpapi_enabled',
         'deepseek_model',
         'daily_limit',
         'system_prompt',
@@ -19,6 +22,7 @@ class AiSetting extends Model
     {
         return [
             'deepseek_enabled' => 'boolean',
+            'serpapi_enabled' => 'boolean',
             'daily_limit' => 'integer',
         ];
     }
@@ -29,11 +33,17 @@ class AiSetting extends Model
             ['id' => 1],
             [
                 'deepseek_enabled' => false,
+                'serpapi_enabled' => true,
                 'deepseek_model' => (string) config('services.deepseek.model', 'deepseek-chat'),
                 'daily_limit' => (int) config('services.deepseek.daily_limit', 200),
                 'system_prompt' => null,
             ],
         );
+    }
+
+    public static function serpApiEnabled(): bool
+    {
+        return (bool) static::current()->serpapi_enabled;
     }
 
     public function defaultSystemPrompt(): string

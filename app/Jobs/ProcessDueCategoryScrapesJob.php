@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Enums\ScrapeRunStatus;
+use App\Models\AiSetting;
 use App\Models\Category;
 use App\Models\ScrapeRun;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,6 +20,10 @@ class ProcessDueCategoryScrapesJob implements ShouldQueue
 
     public function handle(): void
     {
+        if (! AiSetting::serpApiEnabled()) {
+            return;
+        }
+
         // Close zombie runs left behind by killed/timed-out workers.
         ScrapeRun::query()
             ->where('status', ScrapeRunStatus::Running)
