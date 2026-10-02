@@ -20,11 +20,13 @@ return [
     ],
 
     'sequence' => [
+        'activate_discovered_batch' => (int) env('ACTIVATE_DISCOVERED_BATCH', 50),
         'step1_open_window_days' => (int) env('STEP1_OPEN_WINDOW_DAYS', 5),
         'step2_schedule_days_after_open' => (int) env('STEP2_SCHEDULE_DAYS_AFTER_OPEN', 5),
         'step3_schedule_days_after_step2' => (int) env('STEP3_SCHEDULE_DAYS_AFTER_STEP2', 15),
         'step2_engagement_window_days' => (int) env('STEP2_ENGAGEMENT_WINDOW_DAYS', 7),
     ],
+
 
     'alerts' => [
         'bounce_rate_threshold' => (float) env('BOUNCE_RATE_ALERT_THRESHOLD', 0.04),
