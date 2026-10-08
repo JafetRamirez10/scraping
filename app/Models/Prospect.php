@@ -14,6 +14,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Prospect extends Model
 {
+    protected $attributes = [
+        'disable_step_1' => 0,
+        'disable_step_2' => 0,
+    ];
+
     protected $fillable = [
         'category_id',
         'company_name',

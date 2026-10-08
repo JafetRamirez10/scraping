@@ -28,19 +28,21 @@ class ViewProspect extends ViewRecord
                 ->label('Pasos')
                 ->icon('heroicon-o-adjustments-horizontal')
                 ->modalHeading('Pasos de este prospecto')
-                ->modalDescription('Aplica solo a este prospecto. Un paso ya enviado no se cancela.')
+                ->modalDescription('Por defecto los dos pasos están activos. Apaga uno solo para este prospecto. Un paso ya enviado no se cancela.')
                 ->modalSubmitActionLabel('Guardar')
                 ->fillForm(fn (): array => [
-                    'disable_step_1' => (bool) $this->getRecord()->disable_step_1,
-                    'disable_step_2' => (bool) $this->getRecord()->disable_step_2,
+                    'step_1_active' => ! (bool) $this->getRecord()->disable_step_1,
+                    'step_2_active' => ! (bool) $this->getRecord()->disable_step_2,
                 ])
                 ->form([
-                    Forms\Components\Toggle::make('disable_step_1')
-                        ->label('Desactivar paso 1')
-                        ->helperText('Si está pendiente, no se envía.'),
-                    Forms\Components\Toggle::make('disable_step_2')
-                        ->label('Desactivar paso 2')
-                        ->helperText('Si está pendiente, no se envía. Si aún no existe, no se programa.'),
+                    Forms\Components\Toggle::make('step_1_active')
+                        ->label('Paso 1 activo')
+                        ->default(true)
+                        ->helperText('Encendido: se envía si está pendiente.'),
+                    Forms\Components\Toggle::make('step_2_active')
+                        ->label('Paso 2 activo')
+                        ->default(true)
+                        ->helperText('Encendido: se envía o se programa. Apagado: no sale para este prospecto.'),
                 ])
                 ->action(function (array $data): void {
                     /** @var Prospect $prospect */
@@ -48,8 +50,8 @@ class ViewProspect extends ViewRecord
 
                     app(SetProspectEmailStepAction::class)->sync(
                         $prospect,
-                        (bool) ($data['disable_step_1'] ?? false),
-                        (bool) ($data['disable_step_2'] ?? false),
+                        ! (bool) ($data['step_1_active'] ?? true),
+                        ! (bool) ($data['step_2_active'] ?? true),
                     );
 
                     Notification::make()
@@ -73,8 +75,14 @@ class ViewProspect extends ViewRecord
                 TextEntry::make('status')->badge(),
                 TextEntry::make('email_quality')->label('Calidad'),
                 TextEntry::make('email_source')->label('Fuente'),
-                IconEntry::make('disable_step_1')->label('Paso 1 desactivado')->boolean(),
-                IconEntry::make('disable_step_2')->label('Paso 2 desactivado')->boolean(),
+                IconEntry::make('step_1_active')
+                    ->label('Paso 1 activo')
+                    ->state(fn (Prospect $record): bool => ! $record->disable_step_1)
+                    ->boolean(),
+                IconEntry::make('step_2_active')
+                    ->label('Paso 2 activo')
+                    ->state(fn (Prospect $record): bool => ! $record->disable_step_2)
+                    ->boolean(),
             ])->columns(2),
             Section::make('Correos enviados')->schema([
                 RepeatableEntry::make('emails')

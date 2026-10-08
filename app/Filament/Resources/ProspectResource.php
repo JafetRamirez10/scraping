@@ -53,24 +53,23 @@ class ProspectResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
                     ->badge(),
-                Tables\Columns\TextColumn::make('disabled_steps')
-                    ->label('Pasos off')
+                Tables\Columns\TextColumn::make('active_steps')
+                    ->label('Pasos activos')
                     ->badge()
-                    ->color('warning')
-                    ->state(function (Prospect $record): ?string {
-                        $disabled = [];
+                    ->color(fn (Prospect $record): string => ($record->disable_step_1 || $record->disable_step_2) ? 'warning' : 'success')
+                    ->state(function (Prospect $record): string {
+                        $active = [];
 
-                        if ($record->disable_step_1) {
-                            $disabled[] = '1';
+                        if (! $record->disable_step_1) {
+                            $active[] = '1';
                         }
 
-                        if ($record->disable_step_2) {
-                            $disabled[] = '2';
+                        if (! $record->disable_step_2) {
+                            $active[] = '2';
                         }
 
-                        return $disabled === [] ? null : implode(', ', $disabled);
-                    })
-                    ->placeholder('—'),
+                        return $active === [] ? 'Ninguno' : implode(', ', $active);
+                    }),
                 Tables\Columns\TextColumn::make('created_at')->label('Descubierto')->dateTime(),
             ])
             ->defaultSort('created_at', 'desc')
@@ -125,25 +124,27 @@ class ProspectResource extends Resource
                     ->label('Pasos')
                     ->icon('heroicon-o-adjustments-horizontal')
                     ->modalHeading('Pasos de este prospecto')
-                    ->modalDescription('Aplica solo a este prospecto. Un paso ya enviado no se cancela.')
+                    ->modalDescription('Por defecto los dos pasos están activos. Apaga uno solo para este prospecto. Un paso ya enviado no se cancela.')
                     ->modalSubmitActionLabel('Guardar')
                     ->fillForm(fn (Prospect $record): array => [
-                        'disable_step_1' => (bool) $record->disable_step_1,
-                        'disable_step_2' => (bool) $record->disable_step_2,
+                        'step_1_active' => ! $record->disable_step_1,
+                        'step_2_active' => ! $record->disable_step_2,
                     ])
                     ->form([
-                        Forms\Components\Toggle::make('disable_step_1')
-                            ->label('Desactivar paso 1')
-                            ->helperText('Si está pendiente, no se envía.'),
-                        Forms\Components\Toggle::make('disable_step_2')
-                            ->label('Desactivar paso 2')
-                            ->helperText('Si está pendiente, no se envía. Si aún no existe, no se programa.'),
+                        Forms\Components\Toggle::make('step_1_active')
+                            ->label('Paso 1 activo')
+                            ->default(true)
+                            ->helperText('Encendido: se envía si está pendiente.'),
+                        Forms\Components\Toggle::make('step_2_active')
+                            ->label('Paso 2 activo')
+                            ->default(true)
+                            ->helperText('Encendido: se envía o se programa. Apagado: no sale para este prospecto.'),
                     ])
                     ->action(function (Prospect $record, array $data): void {
                         app(SetProspectEmailStepAction::class)->sync(
                             $record,
-                            (bool) ($data['disable_step_1'] ?? false),
-                            (bool) ($data['disable_step_2'] ?? false),
+                            ! (bool) ($data['step_1_active'] ?? true),
+                            ! (bool) ($data['step_2_active'] ?? true),
                         );
 
                         Notification::make()
