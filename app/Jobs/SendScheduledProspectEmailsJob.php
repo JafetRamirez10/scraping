@@ -33,6 +33,15 @@ class SendScheduledProspectEmailsJob implements ShouldQueue
             ->with(['prospect.category', 'template', 'sequence'])
             ->where('status', ProspectEmailStatus::Pending)
             ->where('scheduled_at', '<=', now())
+            ->where(function ($query): void {
+                $query->where(function ($query): void {
+                    $query->where('step', '!=', 1)
+                        ->orWhereHas('prospect', fn ($prospect) => $prospect->where('disable_step_1', false));
+                })->where(function ($query): void {
+                    $query->where('step', '!=', 2)
+                        ->orWhereHas('prospect', fn ($prospect) => $prospect->where('disable_step_2', false));
+                });
+            })
             ->orderBy('scheduled_at')
             ->limit(max(0, $remaining))
             ->each(function (ProspectEmail $prospectEmail) use ($sendAction, $sendWindow): void {

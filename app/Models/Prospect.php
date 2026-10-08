@@ -24,6 +24,8 @@ class Prospect extends Model
         'status',
         'unsubscribed_at',
         'bounce_count',
+        'disable_step_1',
+        'disable_step_2',
         'metadata',
     ];
 
@@ -34,6 +36,8 @@ class Prospect extends Model
             'email_quality' => EmailQuality::class,
             'email_source' => EmailSource::class,
             'unsubscribed_at' => 'datetime',
+            'disable_step_1' => 'boolean',
+            'disable_step_2' => 'boolean',
             'metadata' => 'array',
         ];
     }
@@ -51,6 +55,15 @@ class Prospect extends Model
     public function emails(): HasMany
     {
         return $this->hasMany(ProspectEmail::class);
+    }
+
+    public function isStepDisabled(int $step): bool
+    {
+        return match ($step) {
+            1 => (bool) $this->disable_step_1,
+            2 => (bool) $this->disable_step_2,
+            default => false,
+        };
     }
 
     public function isContactable(): bool

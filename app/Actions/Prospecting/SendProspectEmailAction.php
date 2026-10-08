@@ -26,6 +26,15 @@ class SendProspectEmailAction
 
         $prospect = $prospectEmail->prospect;
 
+        if ($prospect->isStepDisabled((int) $prospectEmail->step)) {
+            $prospectEmail->update([
+                'status' => ProspectEmailStatus::Skipped,
+                'error_message' => SetProspectEmailStepAction::DISABLED_MESSAGE,
+            ]);
+
+            return false;
+        }
+
         if (! $prospect->isContactable()) {
             $prospectEmail->update([
                 'status' => ProspectEmailStatus::Skipped,

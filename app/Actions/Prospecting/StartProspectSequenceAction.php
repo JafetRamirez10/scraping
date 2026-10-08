@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Actions\Prospecting;
 
 use App\Enums\EmailQuality;
-use App\Enums\ProspectEmailStatus;
 use App\Enums\ProspectStatus;
 use App\Models\EmailTemplate;
 use App\Models\Prospect;
@@ -57,7 +56,7 @@ class StartProspectSequenceAction
                 'email_template_id' => $template->id,
                 'step' => 1,
                 'scheduled_at' => $this->sendWindowService->nextAvailableSendTime(),
-                'status' => ProspectEmailStatus::Pending,
+                ...SetProspectEmailStepAction::initialAttributes($prospect, 1),
             ]);
 
             $prospect->update(['status' => ProspectStatus::InSequence]);
@@ -86,7 +85,7 @@ class StartProspectSequenceAction
                 'email_template_id' => $template->id,
                 'step' => 1,
                 'scheduled_at' => $this->sendWindowService->nextAvailableSendTime(),
-                'status' => ProspectEmailStatus::Pending,
+                ...SetProspectEmailStepAction::initialAttributes($prospect, 1),
             ]);
 
             $prospect->update(['status' => ProspectStatus::InSequence]);
