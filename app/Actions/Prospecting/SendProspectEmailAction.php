@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Actions\Prospecting;
 
 use App\Enums\ProspectEmailStatus;
+use App\Exceptions\MailRushRateLimited;
 use App\Mail\ProspectOutreachMail;
 use App\Models\ProspectEmail;
 use App\Models\SuppressionListEntry;
+use App\Services\Mail\OutboundMailer;
 use App\Services\Prospecting\EmailSendWindowService;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 class SendProspectEmailAction
@@ -18,6 +19,7 @@ class SendProspectEmailAction
     public function __construct(
         private readonly PersonalizeProspectEmailAction $personalizeProspectEmail,
         private readonly EmailSendWindowService $sendWindowService,
+        private readonly OutboundMailer $outboundMailer,
     ) {}
 
     public function execute(ProspectEmail $prospectEmail): bool
@@ -76,7 +78,15 @@ class SendProspectEmailAction
                 textBody: $rendered['body_text'],
             );
 
-            Mail::to($prospect->email, $prospect->company_name)->send($mailable);
+            $messageId = $this->outboundMailer->send(
+                mailable: $mailable,
+                toEmail: $prospect->email,
+                toName: $prospect->company_name,
+                subject: $rendered['subject'],
+                html: $rendered['body_html'],
+                text: $rendered['body_text'],
+                idempotencyKey: 'prospect-email-'.$prospectEmail->id,
+            );
 
             $prospectEmail->update([
                 'status' => ProspectEmailStatus::Sent,
@@ -85,6 +95,7 @@ class SendProspectEmailAction
                 'rendered_body_html' => $rendered['body_html'],
                 'rendered_body_text' => $rendered['body_text'],
                 'personalized_by_ai' => $rendered['personalized_by_ai'],
+                'provider_message_id' => $messageId,
             ]);
 
             $prospectEmail->sequence->update(['current_step' => $prospectEmail->step]);
@@ -93,6 +104,13 @@ class SendProspectEmailAction
             $this->sendWindowService->incrementDailyStat('sent_count');
 
             return true;
+        } catch (MailRushRateLimited $exception) {
+            Log::warning('MailRush rate limit reached', [
+                'prospect_email_id' => $prospectEmail->id,
+                'retry_after_seconds' => $exception->retryAfterSeconds,
+            ]);
+
+            throw $exception;
         } catch (Throwable $exception) {
             Log::error('Prospect email send failed', [
                 'prospect_email_id' => $prospectEmail->id,

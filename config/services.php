@@ -50,6 +50,12 @@ return [
         'webhook_secret' => env('BREVO_WEBHOOK_SECRET'),
     ],
 
+    'mailrush' => [
+        'api_key' => env('MAILRUSH_API_KEY'),
+        'base_url' => env('MAILRUSH_BASE_URL', 'https://app2.mailrush.io/api/v2'),
+        'timeout' => (int) env('MAILRUSH_TIMEOUT', 30),
+    ],
+
     'deepseek' => [
         'key' => env('DEEPSEEK_API_KEY'),
         'base_url' => env('DEEPSEEK_BASE_URL', 'https://api.deepseek.com'),

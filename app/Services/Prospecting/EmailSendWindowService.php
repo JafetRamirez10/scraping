@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Prospecting;
 
 use App\Models\DailyEmailStat;
-use App\Models\ProspectEmail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -60,7 +59,7 @@ class EmailSendWindowService
 
     public function canSendMoreToday(): bool
     {
-        $dailyLimit = (int) config('prospecting.email.daily_limit', 10);
+        $dailyLimit = (int) config('prospecting.email.daily_limit', 300);
         $sentToday = $this->sentCountToday();
 
         return $sentToday < $dailyLimit;
@@ -77,7 +76,7 @@ class EmailSendWindowService
     {
         $domain = substr(strrchr($email, '@') ?: '', 1);
         $limit = (int) config('prospecting.email.max_per_domain_per_day', 3);
-        $cacheKey = 'domain_email_count:' . today()->toDateString() . ':' . $domain;
+        $cacheKey = 'domain_email_count:'.today()->toDateString().':'.$domain;
         $count = (int) Cache::get($cacheKey, 0);
 
         return $count < $limit;
@@ -86,7 +85,7 @@ class EmailSendWindowService
     public function recordDomainSend(string $email): void
     {
         $domain = substr(strrchr($email, '@') ?: '', 1);
-        $cacheKey = 'domain_email_count:' . today()->toDateString() . ':' . $domain;
+        $cacheKey = 'domain_email_count:'.today()->toDateString().':'.$domain;
         $count = (int) Cache::get($cacheKey, 0);
         Cache::put($cacheKey, $count + 1, now()->endOfDay());
     }

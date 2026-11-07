@@ -17,6 +17,12 @@ return [
     'default' => env('MAIL_MAILER', 'log'),
 
     /*
+    | Proveedor de envío de prospección.
+    | brevo: SMTP ya configurado. mailrush: API de MailRush.io.
+    */
+    'provider' => env('MAIL_PROVIDER', 'brevo'),
+
+    /*
     |--------------------------------------------------------------------------
     | Mailer Configurations
     |--------------------------------------------------------------------------

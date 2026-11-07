@@ -15,6 +15,12 @@ Artisan::command('inspire', function () {
 
 Schedule::job(new ProcessDueCategoryScrapesJob)->everyThirtyMinutes();
 Schedule::job(new ActivateDiscoveredProspectsJob)->everyFifteenMinutes();
-Schedule::job(new SendScheduledProspectEmailsJob)->hourly();
+Schedule::job(new SendScheduledProspectEmailsJob)
+    ->hourly()
+    ->when(fn (): bool => strtolower((string) config('mail.provider', 'brevo')) !== 'mailrush');
+
+Schedule::job(new SendScheduledProspectEmailsJob)
+    ->everyMinute()
+    ->when(fn (): bool => strtolower((string) config('mail.provider', 'brevo')) === 'mailrush');
 Schedule::job(new CheckEngagementTimeoutsJob)->everySixHours();
 Schedule::job(new UpdateSerpApiCreditsCacheJob)->dailyAt('02:00');

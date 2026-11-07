@@ -7,8 +7,8 @@ namespace App\Actions\Prospecting;
 use App\Mail\TemplateTestMail;
 use App\Models\EmailTemplate;
 use App\Models\Prospect;
+use App\Services\Mail\OutboundMailer;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -16,6 +16,7 @@ class SendDeepSeekTestEmailAction
 {
     public function __construct(
         private readonly PersonalizeProspectEmailAction $personalizeProspectEmail,
+        private readonly OutboundMailer $outboundMailer,
     ) {}
 
     /**
@@ -39,11 +40,20 @@ class SendDeepSeekTestEmailAction
         );
 
         try {
-            Mail::to($recipientEmail)->send(new TemplateTestMail(
-                subjectLine: '[PRUEBA IA] '.$rendered['subject'],
-                htmlBody: $rendered['body_html'],
-                textBody: $rendered['body_text'],
-            ));
+            $subject = '[PRUEBA IA] '.$rendered['subject'];
+
+            $this->outboundMailer->send(
+                mailable: new TemplateTestMail(
+                    subjectLine: $subject,
+                    htmlBody: $rendered['body_html'],
+                    textBody: $rendered['body_text'],
+                ),
+                toEmail: $recipientEmail,
+                toName: null,
+                subject: $subject,
+                html: $rendered['body_html'],
+                text: $rendered['body_text'],
+            );
         } catch (Throwable $exception) {
             Log::error('DeepSeek test email send failed', [
                 'template_id' => $template->id,
@@ -52,7 +62,7 @@ class SendDeepSeekTestEmailAction
             ]);
 
             throw ValidationException::withMessages([
-                'email' => 'No se pudo enviar el correo de prueba. Verifica SMTP/Brevo.',
+                'email' => 'No se pudo enviar el correo de prueba. Verifica el proveedor activo en MAIL_PROVIDER.',
             ]);
         }
 

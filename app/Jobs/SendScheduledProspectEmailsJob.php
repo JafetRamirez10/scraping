@@ -6,10 +6,13 @@ namespace App\Jobs;
 
 use App\Actions\Prospecting\SendProspectEmailAction;
 use App\Enums\ProspectEmailStatus;
+use App\Exceptions\MailRushRateLimited;
 use App\Models\ProspectEmail;
 use App\Services\Prospecting\EmailSendWindowService;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Cache;
 
 class SendScheduledProspectEmailsJob implements ShouldQueue
 {
@@ -23,11 +26,15 @@ class SendScheduledProspectEmailsJob implements ShouldQueue
             return;
         }
 
+        if ($this->mailRushCoolingDown()) {
+            return;
+        }
+
         if (! $sendWindow->canSendMoreToday()) {
             return;
         }
 
-        $remaining = (int) config('prospecting.email.daily_limit', 10) - $sendWindow->sentCountToday();
+        $remaining = (int) config('prospecting.email.daily_limit', 300) - $sendWindow->sentCountToday();
 
         ProspectEmail::query()
             ->with(['prospect.category', 'template', 'sequence'])
@@ -44,12 +51,33 @@ class SendScheduledProspectEmailsJob implements ShouldQueue
             })
             ->orderBy('scheduled_at')
             ->limit(max(0, $remaining))
-            ->each(function (ProspectEmail $prospectEmail) use ($sendAction, $sendWindow): void {
+            ->each(function (ProspectEmail $prospectEmail) use ($sendAction, $sendWindow) {
                 if (! $sendWindow->canSendMoreToday()) {
-                    return;
+                    return false;
                 }
 
-                $sendAction->execute($prospectEmail);
+                try {
+                    $sendAction->execute($prospectEmail);
+                } catch (MailRushRateLimited $exception) {
+                    Cache::put(
+                        'mailrush:retry_at',
+                        now()->addSeconds($exception->retryAfterSeconds),
+                        $exception->retryAfterSeconds,
+                    );
+
+                    return false;
+                }
             });
+    }
+
+    private function mailRushCoolingDown(): bool
+    {
+        if (strtolower((string) config('mail.provider', 'brevo')) !== 'mailrush') {
+            return false;
+        }
+
+        $retryAt = Cache::get('mailrush:retry_at');
+
+        return $retryAt instanceof CarbonInterface && now()->lt($retryAt);
     }
 }

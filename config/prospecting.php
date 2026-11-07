@@ -11,7 +11,7 @@ return [
     ],
 
     'email' => [
-        'daily_limit' => (int) env('PROSPECT_DAILY_EMAIL_LIMIT', 10),
+        'daily_limit' => (int) env('PROSPECT_DAILY_EMAIL_LIMIT', 300),
         'max_per_domain_per_day' => (int) env('MAX_EMAILS_PER_DOMAIN_PER_DAY', 3),
         'max_per_category_per_day' => (int) env('MAX_EMAILS_PER_CATEGORY_PER_DAY', 10),
         'send_window_start' => env('EMAIL_SEND_WINDOW_START', '09:00'),
@@ -26,7 +26,6 @@ return [
         'step3_schedule_days_after_step2' => (int) env('STEP3_SCHEDULE_DAYS_AFTER_STEP2', 15),
         'step2_engagement_window_days' => (int) env('STEP2_ENGAGEMENT_WINDOW_DAYS', 7),
     ],
-
 
     'alerts' => [
         'bounce_rate_threshold' => (float) env('BOUNCE_RATE_ALERT_THRESHOLD', 0.04),
