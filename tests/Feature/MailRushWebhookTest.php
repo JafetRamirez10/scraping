@@ -180,4 +180,51 @@ class MailRushWebhookTest extends TestCase
         $this->assertNotNull($prospectEmail->fresh()->replied_at);
         $this->assertNotNull($sequence->fresh()->cancelled_at);
     }
+
+    public function test_unmatched_reply_still_sends_an_alert(): void
+    {
+        Mail::fake();
+
+        $secret = 'whsec_test';
+        config([
+            'services.mailrush.webhook_secret' => $secret,
+            'mail.alert.to' => 'soporte@jramirezr.net',
+            'mail.alert.from.address' => 'avisos@jramirezr.net',
+            'mail.alert.from.name' => 'Avisos',
+            'mail.mailers.smtp_alert.host' => 'smtp.alert.test',
+        ]);
+
+        $body = json_encode([
+            'organization_id' => 'org_1',
+            'event_type' => 'reply',
+            'event_id' => '<incoming-reply-unknown@example.com>',
+            'data' => [
+                'from' => 'Ana Ruiz <ana@ejemplo.com>',
+                'subject' => 'Re: Prueba',
+                'text' => 'Recibí el correo de prueba.',
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $this->call(
+            'POST',
+            '/webhooks/mailrush',
+            [],
+            [],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_X_MAILRUSH_SIGNATURE' => 'sha256='.hash_hmac('sha256', $body, $secret),
+            ],
+            $body,
+        )->assertOk();
+
+        Mail::assertSent(MailRushReplyAlertMail::class, function (MailRushReplyAlertMail $mail): bool {
+            $html = (string) $mail->content()->htmlString;
+
+            return $mail->prospect === null
+                && $mail->hasTo('soporte@jramirezr.net')
+                && $mail->fromEmail === 'ana@ejemplo.com'
+                && str_contains($html, 'no se pudo asociar a un prospecto');
+        });
+    }
 }

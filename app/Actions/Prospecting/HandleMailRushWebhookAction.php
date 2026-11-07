@@ -145,6 +145,7 @@ class HandleMailRushWebhookAction
             Log::warning('MailRush webhook could not match a prospect', [
                 'event_type' => 'reply',
             ]);
+            $this->sendReplyAlert->execute(null, $email, $data);
 
             return;
         }

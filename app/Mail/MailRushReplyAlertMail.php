@@ -43,7 +43,9 @@ class MailRushReplyAlertMail extends Mailable
     {
         $prospect = $this->prospect;
         $lines = [
-            'Alguien respondió un correo enviado por MailRush.',
+            $prospect === null
+                ? 'Llegó una respuesta de MailRush, pero no se pudo asociar a un prospecto.'
+                : 'Alguien respondió un correo enviado por MailRush.',
             '',
             'Empresa: '.($prospect?->company_name ?: '—'),
             'Correo: '.($this->fromEmail !== '' ? $this->fromEmail : ($prospect?->email ?: '—')),
