@@ -57,6 +57,17 @@ return [
             'verify_peer' => filter_var(env('MAIL_VERIFY_PEER', false), FILTER_VALIDATE_BOOL),
         ],
 
+        'smtp_alert' => [
+            'transport' => 'smtp',
+            'scheme' => env('SMTP_ALERT_SCHEME') ?: ((env('SMTP_ALERT_ENCRYPTION', 'tls') === 'ssl') ? 'smtps' : 'smtp'),
+            'host' => env('SMTP_ALERT_HOST'),
+            'port' => env('SMTP_ALERT_PORT', 587),
+            'username' => env('SMTP_ALERT_USERNAME'),
+            'password' => env('SMTP_ALERT_PASSWORD'),
+            'timeout' => null,
+            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],
@@ -121,6 +132,14 @@ return [
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
+    ],
+
+    'alert' => [
+        'to' => env('REPLY_ALERT_EMAIL', 'soporte@jramirezr.net'),
+        'from' => [
+            'address' => env('SMTP_ALERT_FROM_ADDRESS'),
+            'name' => env('SMTP_ALERT_FROM_NAME', env('APP_NAME', 'PlanScraping')),
+        ],
     ],
 
 ];

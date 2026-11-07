@@ -15,6 +15,7 @@ class HandleMailRushWebhookAction
     public function __construct(
         private readonly HandleBrevoWebhookAction $brevoWebhook,
         private readonly CancelProspectSequenceAction $cancelSequence,
+        private readonly SendMailRushReplyAlertAction $sendReplyAlert,
     ) {}
 
     /**
@@ -37,7 +38,7 @@ class HandleMailRushWebhookAction
         }
 
         if ($event === 'reply') {
-            $this->handleReply($prospectEmail, $email);
+            $this->handleReply($prospectEmail, $email, $data);
 
             return;
         }
@@ -129,7 +130,10 @@ class HandleMailRushWebhookAction
         return filter_var($from, FILTER_VALIDATE_EMAIL) ? $from : '';
     }
 
-    private function handleReply(?ProspectEmail $prospectEmail, string $email): void
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function handleReply(?ProspectEmail $prospectEmail, string $email, array $data): void
     {
         $prospect = $prospectEmail?->prospect;
 
@@ -156,5 +160,6 @@ class HandleMailRushWebhookAction
         }
 
         $this->cancelSequence->execute($prospect, SequenceCancelReason::Reply);
+        $this->sendReplyAlert->execute($prospect, $email, $data);
     }
 }

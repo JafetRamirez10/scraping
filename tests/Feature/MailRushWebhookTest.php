@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Enums\ProspectEmailStatus;
 use App\Enums\ProspectStatus;
+use App\Mail\MailRushReplyAlertMail;
 use App\Models\Category;
 use App\Models\EmailTemplate;
 use App\Models\Prospect;
@@ -13,6 +14,7 @@ use App\Models\ProspectEmail;
 use App\Models\ProspectSequence;
 use App\Models\SuppressionListEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class MailRushWebhookTest extends TestCase
@@ -30,6 +32,8 @@ class MailRushWebhookTest extends TestCase
 
     public function test_signed_bounce_suppresses_the_matched_prospect(): void
     {
+        Mail::fake();
+
         $secret = 'whsec_test';
         config(['services.mailrush.webhook_secret' => $secret]);
 
@@ -93,6 +97,87 @@ class MailRushWebhookTest extends TestCase
             'email' => 'lead@example.org',
         ]);
         $this->assertNotNull(SuppressionListEntry::query()->where('email', 'lead@example.org')->first());
+        $this->assertNotNull($sequence->fresh()->cancelled_at);
+        Mail::assertNothingSent();
+    }
+
+    public function test_signed_reply_sends_the_alert_through_the_alert_smtp(): void
+    {
+        Mail::fake();
+
+        $secret = 'whsec_test';
+        config([
+            'services.mailrush.webhook_secret' => $secret,
+            'mail.alert.to' => 'soporte@jramirezr.net',
+            'mail.alert.from.address' => 'avisos@jramirezr.net',
+            'mail.alert.from.name' => 'Avisos',
+            'mail.mailers.smtp_alert.host' => 'smtp.alert.test',
+        ]);
+
+        $category = Category::query()->create([
+            'name' => 'Logística',
+            'slug' => 'logistica-reply',
+            'search_query' => 'logistica',
+        ]);
+        $template = EmailTemplate::query()->create([
+            'name' => 'Paso 1',
+            'step' => 1,
+            'subject' => 'Hola',
+            'body_html' => '<p>Hola</p>',
+        ]);
+        $prospect = Prospect::query()->create([
+            'category_id' => $category->id,
+            'company_name' => 'Empresa de Ejemplo',
+            'email' => 'maria.perez@example.com',
+            'status' => ProspectStatus::InSequence,
+        ]);
+        $sequence = ProspectSequence::query()->create([
+            'prospect_id' => $prospect->id,
+            'started_at' => now(),
+        ]);
+        $prospectEmail = ProspectEmail::query()->create([
+            'prospect_id' => $prospect->id,
+            'prospect_sequence_id' => $sequence->id,
+            'email_template_id' => $template->id,
+            'step' => 1,
+            'scheduled_at' => now()->subHour(),
+            'sent_at' => now()->subHour(),
+            'status' => ProspectEmailStatus::Sent,
+            'provider_message_id' => '<message-id@your-smtp>',
+        ]);
+
+        $body = json_encode([
+            'organization_id' => 'org_1',
+            'event_type' => 'reply',
+            'event_id' => '<incoming-reply@example.com>',
+            'data' => [
+                'from' => 'Maria Perez <maria.perez@example.com>',
+                'subject' => 'Re: Tu cuenta',
+                'related_outgoing_message_id' => '<message-id@your-smtp>',
+                'text' => 'Podemos hablar el jueves?',
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $this->call(
+            'POST',
+            '/webhooks/mailrush',
+            [],
+            [],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_X_MAILRUSH_SIGNATURE' => 'sha256='.hash_hmac('sha256', $body, $secret),
+            ],
+            $body,
+        )->assertOk();
+
+        Mail::assertSent(MailRushReplyAlertMail::class, function (MailRushReplyAlertMail $mail): bool {
+            return $mail->mailer === 'smtp_alert'
+                && $mail->hasTo('soporte@jramirezr.net')
+                && $mail->replySubject === 'Re: Tu cuenta'
+                && $mail->replyText === 'Podemos hablar el jueves?';
+        });
+        $this->assertNotNull($prospectEmail->fresh()->replied_at);
         $this->assertNotNull($sequence->fresh()->cancelled_at);
     }
 }
