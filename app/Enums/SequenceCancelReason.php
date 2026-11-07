@@ -10,5 +10,6 @@ enum SequenceCancelReason: string
     case Bounce = 'bounce';
     case Complaint = 'complaint';
     case Unsubscribe = 'unsubscribe';
+    case Reply = 'reply';
     case Manual = 'manual';
 }

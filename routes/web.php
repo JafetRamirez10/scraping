@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\HandleBrevoWebhookController;
+use App\Http\Controllers\HandleMailRushWebhookController;
 use App\Http\Controllers\UnsubscribeController;
 use Illuminate\Support\Facades\Route;
 
@@ -11,3 +12,6 @@ Route::get('/unsubscribe/{prospect}', UnsubscribeController::class)
 
 Route::post('/webhooks/brevo', HandleBrevoWebhookController::class)
     ->name('webhooks.brevo');
+
+Route::post('/webhooks/mailrush', HandleMailRushWebhookController::class)
+    ->name('webhooks.mailrush');
