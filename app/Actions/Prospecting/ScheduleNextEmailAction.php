@@ -25,6 +25,10 @@ class ScheduleNextEmailAction
 
         $prospect = $prospectEmail->prospect;
 
+        if ($prospect->stopsFollowUpEmails()) {
+            return;
+        }
+
         if ($prospect->email_quality === EmailQuality::Low->value) {
             return;
         }
@@ -59,6 +63,12 @@ class ScheduleNextEmailAction
     public function afterEngagement(ProspectEmail $prospectEmail): void
     {
         if ($prospectEmail->step !== 2) {
+            return;
+        }
+
+        $prospectEmail->loadMissing('prospect');
+
+        if ($prospectEmail->prospect?->stopsFollowUpEmails()) {
             return;
         }
 

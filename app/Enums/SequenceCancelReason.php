@@ -11,5 +11,6 @@ enum SequenceCancelReason: string
     case Complaint = 'complaint';
     case Unsubscribe = 'unsubscribe';
     case Reply = 'reply';
+    case FollowUpStopped = 'follow_up_stopped';
     case Manual = 'manual';
 }

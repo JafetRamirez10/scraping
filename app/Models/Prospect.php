@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\EmailQuality;
 use App\Enums\EmailSource;
+use App\Enums\ProspectOutcome;
 use App\Enums\ProspectStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,6 +28,7 @@ class Prospect extends Model
         'email_quality',
         'email_source',
         'status',
+        'outcome',
         'unsubscribed_at',
         'bounce_count',
         'disable_step_1',
@@ -38,6 +40,7 @@ class Prospect extends Model
     {
         return [
             'status' => ProspectStatus::class,
+            'outcome' => ProspectOutcome::class,
             'email_quality' => EmailQuality::class,
             'email_source' => EmailSource::class,
             'unsubscribed_at' => 'datetime',
@@ -71,8 +74,17 @@ class Prospect extends Model
         };
     }
 
+    public function stopsFollowUpEmails(): bool
+    {
+        return $this->outcome?->stopsEmails() === true;
+    }
+
     public function isContactable(): bool
     {
+        if ($this->stopsFollowUpEmails()) {
+            return false;
+        }
+
         return ! in_array($this->status, [
             ProspectStatus::Unsubscribed,
             ProspectStatus::Bounced,

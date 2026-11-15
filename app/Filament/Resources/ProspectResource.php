@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Resources;
 
 use App\Actions\Prospecting\SetProspectEmailStepAction;
+use App\Actions\Prospecting\SetProspectOutcomeAction;
+use App\Enums\ProspectOutcome;
 use App\Enums\ProspectStatus;
 use App\Filament\Resources\ProspectResource\Pages;
 use App\Models\Prospect;
@@ -53,6 +55,10 @@ class ProspectResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
                     ->badge(),
+                Tables\Columns\TextColumn::make('outcome')
+                    ->label('Seguimiento')
+                    ->badge()
+                    ->placeholder('—'),
                 Tables\Columns\TextColumn::make('active_steps')
                     ->label('Pasos activos')
                     ->badge()
@@ -85,6 +91,7 @@ class ProspectResource extends Resource
                     'prospects.email',
                     'prospects.email_quality',
                     'prospects.status',
+                    'prospects.outcome',
                     'prospects.disable_step_1',
                     'prospects.disable_step_2',
                     'prospects.created_at',
@@ -101,6 +108,11 @@ class ProspectResource extends Resource
                     ->label('Estado')
                     ->options(collect(ProspectStatus::cases())->mapWithKeys(
                         fn (ProspectStatus $case) => [$case->value => $case->getLabel()]
+                    )->all()),
+                Tables\Filters\SelectFilter::make('outcome')
+                    ->label('Seguimiento')
+                    ->options(collect(ProspectOutcome::cases())->mapWithKeys(
+                        fn (ProspectOutcome $case) => [$case->value => $case->getLabel()]
                     )->all()),
                 Tables\Filters\SelectFilter::make('current_step')
                     ->label('Paso')
@@ -120,6 +132,36 @@ class ProspectResource extends Resource
                     }),
             ])
             ->actions([
+                Tables\Actions\Action::make('outcome')
+                    ->label('Seguimiento')
+                    ->icon('heroicon-o-flag')
+                    ->modalHeading('Seguimiento del prospecto')
+                    ->modalDescription('Contrata, no interesa y se realizó la reunión detienen los correos pendientes. Responde mensaje y solicita reunión no los detienen.')
+                    ->modalSubmitActionLabel('Guardar')
+                    ->fillForm(fn (Prospect $record): array => [
+                        'outcome' => $record->outcome?->value,
+                    ])
+                    ->form([
+                        Forms\Components\Select::make('outcome')
+                            ->label('Resultado')
+                            ->options(collect(ProspectOutcome::cases())->mapWithKeys(
+                                fn (ProspectOutcome $case) => [$case->value => $case->getLabel()]
+                            )->all())
+                            ->placeholder('Sin seguimiento')
+                            ->native(false),
+                    ])
+                    ->action(function (Prospect $record, array $data): void {
+                        $outcome = filled($data['outcome'] ?? null)
+                            ? ProspectOutcome::from((string) $data['outcome'])
+                            : null;
+
+                        app(SetProspectOutcomeAction::class)->execute($record, $outcome);
+
+                        Notification::make()
+                            ->title('Seguimiento actualizado')
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\Action::make('emailSteps')
                     ->label('Pasos')
                     ->icon('heroicon-o-adjustments-horizontal')

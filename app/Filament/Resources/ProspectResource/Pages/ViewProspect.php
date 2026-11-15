@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Resources\ProspectResource\Pages;
 
 use App\Actions\Prospecting\SetProspectEmailStepAction;
+use App\Actions\Prospecting\SetProspectOutcomeAction;
+use App\Enums\ProspectOutcome;
 use App\Filament\Resources\ProspectResource;
 use App\Models\Prospect;
 use Filament\Actions;
@@ -24,6 +26,40 @@ class ViewProspect extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('outcome')
+                ->label('Seguimiento')
+                ->icon('heroicon-o-flag')
+                ->modalHeading('Seguimiento del prospecto')
+                ->modalDescription('Contrata, no interesa y se realizó la reunión detienen los correos pendientes. Responde mensaje y solicita reunión no los detienen.')
+                ->modalSubmitActionLabel('Guardar')
+                ->fillForm(fn (): array => [
+                    'outcome' => $this->getRecord()->outcome?->value,
+                ])
+                ->form([
+                    Forms\Components\Select::make('outcome')
+                        ->label('Resultado')
+                        ->options(collect(ProspectOutcome::cases())->mapWithKeys(
+                            fn (ProspectOutcome $case) => [$case->value => $case->getLabel()]
+                        )->all())
+                        ->placeholder('Sin seguimiento')
+                        ->native(false),
+                ])
+                ->action(function (array $data): void {
+                    /** @var Prospect $prospect */
+                    $prospect = $this->getRecord();
+                    $outcome = filled($data['outcome'] ?? null)
+                        ? ProspectOutcome::from((string) $data['outcome'])
+                        : null;
+
+                    app(SetProspectOutcomeAction::class)->execute($prospect, $outcome);
+
+                    Notification::make()
+                        ->title('Seguimiento actualizado')
+                        ->success()
+                        ->send();
+
+                    $this->redirect(ProspectResource::getUrl('view', ['record' => $prospect]));
+                }),
             Actions\Action::make('emailSteps')
                 ->label('Pasos')
                 ->icon('heroicon-o-adjustments-horizontal')
@@ -73,6 +109,7 @@ class ViewProspect extends ViewRecord
                 TextEntry::make('category.name')->label('Categoría'),
                 TextEntry::make('website_url')->label('Sitio web')->url(fn ($record) => $record->website_url),
                 TextEntry::make('status')->badge(),
+                TextEntry::make('outcome')->label('Seguimiento')->badge()->placeholder('—'),
                 TextEntry::make('email_quality')->label('Calidad'),
                 TextEntry::make('email_source')->label('Fuente'),
                 IconEntry::make('step_1_active')

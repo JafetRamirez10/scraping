@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Cache;
 
 class ProspectingStatsWidget extends BaseWidget
 {
+    protected static ?int $sort = 1;
+
     protected function getStats(): array
     {
         $todayStats = DailyEmailStat::query()->whereDate('date', today())->first();
