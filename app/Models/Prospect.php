@@ -29,6 +29,7 @@ class Prospect extends Model
         'email_source',
         'status',
         'outcome',
+        'outcome_at',
         'unsubscribed_at',
         'bounce_count',
         'disable_step_1',
@@ -41,6 +42,7 @@ class Prospect extends Model
         return [
             'status' => ProspectStatus::class,
             'outcome' => ProspectOutcome::class,
+            'outcome_at' => 'datetime',
             'email_quality' => EmailQuality::class,
             'email_source' => EmailSource::class,
             'unsubscribed_at' => 'datetime',

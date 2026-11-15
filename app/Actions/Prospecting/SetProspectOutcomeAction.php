@@ -16,7 +16,10 @@ class SetProspectOutcomeAction
 
     public function execute(Prospect $prospect, ?ProspectOutcome $outcome): void
     {
-        $prospect->update(['outcome' => $outcome]);
+        $prospect->update([
+            'outcome' => $outcome,
+            'outcome_at' => $outcome === null ? null : now(),
+        ]);
         $prospect->refresh();
 
         if ($outcome === null || ! $outcome->stopsEmails()) {

@@ -16,6 +16,10 @@ use Throwable;
 
 class SendProspectEmailAction
 {
+    public const SEND_FAILED_MESSAGE = 'Send failed';
+
+    public const MAX_EXTRA_ATTEMPTS = 2;
+
     public function __construct(
         private readonly PersonalizeProspectEmailAction $personalizeProspectEmail,
         private readonly EmailSendWindowService $sendWindowService,
@@ -85,7 +89,7 @@ class SendProspectEmailAction
                 subject: $rendered['subject'],
                 html: $rendered['body_html'],
                 text: $rendered['body_text'],
-                idempotencyKey: 'prospect-email-'.$prospectEmail->id,
+                idempotencyKey: $this->idempotencyKey($prospectEmail),
             );
 
             $prospectEmail->update([
@@ -96,6 +100,7 @@ class SendProspectEmailAction
                 'rendered_body_text' => $rendered['body_text'],
                 'personalized_by_ai' => $rendered['personalized_by_ai'],
                 'provider_message_id' => $messageId,
+                'error_message' => null,
             ]);
 
             $prospectEmail->sequence->update(['current_step' => $prospectEmail->step]);
@@ -118,14 +123,41 @@ class SendProspectEmailAction
                 'step' => $prospectEmail->step,
             ]);
 
+            $attempts = (int) $prospectEmail->send_attempts + 1;
+
+            if ($attempts <= self::MAX_EXTRA_ATTEMPTS) {
+                $prospectEmail->update([
+                    'status' => ProspectEmailStatus::Pending,
+                    'scheduled_at' => now()->addHour(),
+                    'send_attempts' => $attempts,
+                    'last_attempt_at' => now(),
+                    'error_message' => self::SEND_FAILED_MESSAGE,
+                ]);
+
+                return false;
+            }
+
             $prospectEmail->update([
                 'status' => ProspectEmailStatus::Failed,
-                'error_message' => 'Send failed',
+                'send_attempts' => $attempts,
+                'last_attempt_at' => now(),
+                'error_message' => self::SEND_FAILED_MESSAGE,
             ]);
 
             $this->sendWindowService->incrementDailyStat('failed_count');
 
             return false;
         }
+    }
+
+    private function idempotencyKey(ProspectEmail $prospectEmail): string
+    {
+        $attempt = (int) $prospectEmail->send_attempts;
+
+        if ($attempt === 0) {
+            return 'prospect-email-'.$prospectEmail->id;
+        }
+
+        return 'prospect-email-'.$prospectEmail->id.'-retry-'.$attempt;
     }
 }

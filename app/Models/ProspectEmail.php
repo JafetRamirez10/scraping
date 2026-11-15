@@ -23,6 +23,8 @@ class ProspectEmail extends Model
         'replied_at',
         'provider_message_id',
         'error_message',
+        'send_attempts',
+        'last_attempt_at',
         'rendered_subject',
         'rendered_body_html',
         'rendered_body_text',
@@ -39,6 +41,8 @@ class ProspectEmail extends Model
             'clicked_at' => 'datetime',
             'replied_at' => 'datetime',
             'personalized_by_ai' => 'boolean',
+            'send_attempts' => 'integer',
+            'last_attempt_at' => 'datetime',
         ];
     }
 
