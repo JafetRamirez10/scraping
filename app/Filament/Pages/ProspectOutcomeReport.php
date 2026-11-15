@@ -8,6 +8,7 @@ use App\Enums\ProspectOutcome;
 use App\Models\Prospect;
 use Carbon\Carbon;
 use Filament\Forms;
+use Illuminate\Support\Facades\DB;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
@@ -80,7 +81,10 @@ class ProspectOutcomeReport extends Page implements HasForms, HasTable
                 Tables\Columns\TextColumn::make('email')->label('Email')->searchable(),
                 Tables\Columns\TextColumn::make('category.name')->label('Categoría'),
                 Tables\Columns\TextColumn::make('outcome')->label('Seguimiento')->badge(),
-                Tables\Columns\TextColumn::make('outcome_at')->label('Fecha')->dateTime('d/m/Y H:i'),
+                Tables\Columns\TextColumn::make('followed_at')
+                    ->label('Fecha')
+                    ->getStateUsing(fn (Prospect $record): ?Carbon => $record->outcome_at ?? $record->updated_at)
+                    ->dateTime('d/m/Y H:i'),
             ])
             ->defaultSort('outcome_at', 'desc')
             ->paginated([10, 25, 50]);
@@ -92,9 +96,11 @@ class ProspectOutcomeReport extends Page implements HasForms, HasTable
     public function summary(): array
     {
         $counts = (clone $this->reportQuery())
-            ->selectRaw('outcome, COUNT(*) as total')
-            ->groupBy('outcome')
-            ->pluck('total', 'outcome');
+            ->reorder()
+            ->get(['id', 'outcome'])
+            ->countBy(fn (Prospect $prospect): string => $prospect->outcome instanceof ProspectOutcome
+                ? $prospect->outcome->value
+                : (string) $prospect->outcome);
 
         $summary = [];
 
@@ -115,7 +121,7 @@ class ProspectOutcomeReport extends Page implements HasForms, HasTable
         return Prospect::query()
             ->with('category:id,name')
             ->whereNotNull('outcome')
-            ->whereBetween('outcome_at', [$from, $to]);
+            ->whereBetween(DB::raw('COALESCE(outcome_at, updated_at)'), [$from, $to]);
     }
 
     /**

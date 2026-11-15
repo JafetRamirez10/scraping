@@ -52,9 +52,29 @@ class ProspectOutcomeReportTest extends TestCase
             'outcome_at' => now()->subMonths(3),
         ]);
 
-        Livewire::test(ProspectOutcomeReport::class)
+        $withoutDate = Prospect::query()->create([
+            'category_id' => $category->id,
+            'company_name' => 'Empresa sin fecha',
+            'email' => 'sin-fecha@example.org',
+            'status' => ProspectStatus::InSequence,
+            'outcome' => ProspectOutcome::MeetingHeld,
+        ]);
+        $withoutDate->forceFill([
+            'outcome_at' => null,
+            'updated_at' => now()->subDays(2),
+        ])->saveQuietly();
+
+        $report = Livewire::test(ProspectOutcomeReport::class)
             ->assertSee('Empresa reciente')
-            ->assertDontSee('Empresa antigua')
+            ->assertSee('Empresa sin fecha')
+            ->assertDontSee('Empresa antigua');
+
+        $summary = $report->instance()->summary();
+        $this->assertSame(1, $summary['Contrata']);
+        $this->assertSame(1, $summary['Se realizó la reunión']);
+        $this->assertSame(0, $summary['No interesa']);
+
+        $report
             ->set('data.from', now()->subMonths(4)->toDateString())
             ->set('data.to', now()->toDateString())
             ->call('apply')
