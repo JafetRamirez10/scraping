@@ -47,6 +47,11 @@ class SendScheduledProspectEmailsJob implements ShouldQueue
                 })->where(function ($query): void {
                     $query->where('step', '!=', 2)
                         ->orWhereHas('prospect', fn ($prospect) => $prospect->where('disable_step_2', false));
+                })->where(function ($query): void {
+                    $query->where('step', '!=', 3)
+                        ->orWhereHas('prospect', fn ($prospect) => $prospect
+                            ->where('disable_step_2', false)
+                            ->where('disable_step_3', false));
                 });
             })
             ->orderBy('scheduled_at')

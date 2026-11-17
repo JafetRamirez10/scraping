@@ -11,6 +11,8 @@ use App\Filament\Resources\ProspectResource;
 use App\Models\Prospect;
 use Filament\Actions;
 use Filament\Forms;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Notifications\Notification;
@@ -64,11 +66,12 @@ class ViewProspect extends ViewRecord
                 ->label('Pasos')
                 ->icon('heroicon-o-adjustments-horizontal')
                 ->modalHeading('Pasos de este prospecto')
-                ->modalDescription('Por defecto los dos pasos están activos. Apaga uno solo para este prospecto. Un paso ya enviado no se cancela.')
+                ->modalDescription('Por defecto los tres pasos están activos. Si apagas el paso 2, el paso 3 también queda apagado. Un paso ya enviado no se cancela.')
                 ->modalSubmitActionLabel('Guardar')
                 ->fillForm(fn (): array => [
                     'step_1_active' => ! (bool) $this->getRecord()->disable_step_1,
                     'step_2_active' => ! (bool) $this->getRecord()->disable_step_2,
+                    'step_3_active' => ! $this->getRecord()->isStepDisabled(3),
                 ])
                 ->form([
                     Forms\Components\Toggle::make('step_1_active')
@@ -78,16 +81,30 @@ class ViewProspect extends ViewRecord
                     Forms\Components\Toggle::make('step_2_active')
                         ->label('Paso 2 activo')
                         ->default(true)
-                        ->helperText('Encendido: se envía o se programa. Apagado: no sale para este prospecto.'),
+                        ->live()
+                        ->afterStateUpdated(function (Set $set, bool $state): void {
+                            if (! $state) {
+                                $set('step_3_active', false);
+                            }
+                        })
+                        ->helperText('Encendido: se envía o se programa. Apagado: no sale para este prospecto y apaga el paso 3.'),
+                    Forms\Components\Toggle::make('step_3_active')
+                        ->label('Paso 3 activo')
+                        ->default(true)
+                        ->disabled(fn (Get $get): bool => ! $get('step_2_active'))
+                        ->dehydrated()
+                        ->helperText('Encendido: se envía o se programa. Si el paso 2 está apagado, este paso también queda apagado.'),
                 ])
                 ->action(function (array $data): void {
                     /** @var Prospect $prospect */
                     $prospect = $this->getRecord();
+                    $disableStep2 = ! (bool) ($data['step_2_active'] ?? true);
 
                     app(SetProspectEmailStepAction::class)->sync(
                         $prospect,
                         ! (bool) ($data['step_1_active'] ?? true),
-                        ! (bool) ($data['step_2_active'] ?? true),
+                        $disableStep2,
+                        $disableStep2 || ! (bool) ($data['step_3_active'] ?? true),
                     );
 
                     Notification::make()
@@ -119,6 +136,10 @@ class ViewProspect extends ViewRecord
                 IconEntry::make('step_2_active')
                     ->label('Paso 2 activo')
                     ->state(fn (Prospect $record): bool => ! $record->disable_step_2)
+                    ->boolean(),
+                IconEntry::make('step_3_active')
+                    ->label('Paso 3 activo')
+                    ->state(fn (Prospect $record): bool => ! $record->isStepDisabled(3))
                     ->boolean(),
             ])->columns(2),
             Section::make('Correos enviados')->schema([

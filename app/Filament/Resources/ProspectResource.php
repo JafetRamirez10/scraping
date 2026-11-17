@@ -12,6 +12,8 @@ use App\Filament\Resources\ProspectResource\Pages;
 use App\Models\Prospect;
 use App\Models\ProspectSequence;
 use Filament\Forms;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -62,16 +64,14 @@ class ProspectResource extends Resource
                 Tables\Columns\TextColumn::make('active_steps')
                     ->label('Pasos activos')
                     ->badge()
-                    ->color(fn (Prospect $record): string => ($record->disable_step_1 || $record->disable_step_2) ? 'warning' : 'success')
+                    ->color(fn (Prospect $record): string => ($record->disable_step_1 || $record->disable_step_2 || $record->disable_step_3) ? 'warning' : 'success')
                     ->state(function (Prospect $record): string {
                         $active = [];
 
-                        if (! $record->disable_step_1) {
-                            $active[] = '1';
-                        }
-
-                        if (! $record->disable_step_2) {
-                            $active[] = '2';
+                        foreach ([1, 2, 3] as $step) {
+                            if (! $record->isStepDisabled($step)) {
+                                $active[] = (string) $step;
+                            }
                         }
 
                         return $active === [] ? 'Ninguno' : implode(', ', $active);
@@ -94,6 +94,7 @@ class ProspectResource extends Resource
                     'prospects.outcome',
                     'prospects.disable_step_1',
                     'prospects.disable_step_2',
+                    'prospects.disable_step_3',
                     'prospects.created_at',
                 ])
                 ->with([
@@ -166,11 +167,12 @@ class ProspectResource extends Resource
                     ->label('Pasos')
                     ->icon('heroicon-o-adjustments-horizontal')
                     ->modalHeading('Pasos de este prospecto')
-                    ->modalDescription('Por defecto los dos pasos están activos. Apaga uno solo para este prospecto. Un paso ya enviado no se cancela.')
+                    ->modalDescription('Por defecto los tres pasos están activos. Si apagas el paso 2, el paso 3 también queda apagado. Un paso ya enviado no se cancela.')
                     ->modalSubmitActionLabel('Guardar')
                     ->fillForm(fn (Prospect $record): array => [
                         'step_1_active' => ! $record->disable_step_1,
                         'step_2_active' => ! $record->disable_step_2,
+                        'step_3_active' => ! $record->isStepDisabled(3),
                     ])
                     ->form([
                         Forms\Components\Toggle::make('step_1_active')
@@ -180,13 +182,28 @@ class ProspectResource extends Resource
                         Forms\Components\Toggle::make('step_2_active')
                             ->label('Paso 2 activo')
                             ->default(true)
-                            ->helperText('Encendido: se envía o se programa. Apagado: no sale para este prospecto.'),
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, bool $state): void {
+                                if (! $state) {
+                                    $set('step_3_active', false);
+                                }
+                            })
+                            ->helperText('Encendido: se envía o se programa. Apagado: no sale para este prospecto y apaga el paso 3.'),
+                        Forms\Components\Toggle::make('step_3_active')
+                            ->label('Paso 3 activo')
+                            ->default(true)
+                            ->disabled(fn (Get $get): bool => ! $get('step_2_active'))
+                            ->dehydrated()
+                            ->helperText('Encendido: se envía o se programa. Si el paso 2 está apagado, este paso también queda apagado.'),
                     ])
                     ->action(function (Prospect $record, array $data): void {
+                        $disableStep2 = ! (bool) ($data['step_2_active'] ?? true);
+
                         app(SetProspectEmailStepAction::class)->sync(
                             $record,
                             ! (bool) ($data['step_1_active'] ?? true),
-                            ! (bool) ($data['step_2_active'] ?? true),
+                            $disableStep2,
+                            $disableStep2 || ! (bool) ($data['step_3_active'] ?? true),
                         );
 
                         Notification::make()

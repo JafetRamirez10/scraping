@@ -18,14 +18,20 @@ class SetProspectEmailStepAction
         private readonly ScheduleNextEmailAction $scheduleNextEmail,
     ) {}
 
-    public function sync(Prospect $prospect, bool $disableStep1, bool $disableStep2): void
+    public function sync(Prospect $prospect, bool $disableStep1, bool $disableStep2, bool $disableStep3): void
     {
+        if ($disableStep2) {
+            $disableStep3 = true;
+        }
+
         $wasStep1 = (bool) $prospect->disable_step_1;
         $wasStep2 = (bool) $prospect->disable_step_2;
+        $wasStep3 = $prospect->isStepDisabled(3);
 
         $prospect->update([
             'disable_step_1' => $disableStep1,
             'disable_step_2' => $disableStep2,
+            'disable_step_3' => $disableStep3,
         ]);
 
         $prospect->refresh();
@@ -40,6 +46,12 @@ class SetProspectEmailStepAction
             $this->skipPending($prospect, 2);
         } elseif ($wasStep2) {
             $this->restore($prospect, 2);
+        }
+
+        if ($disableStep3) {
+            $this->skipPending($prospect, 3);
+        } elseif ($wasStep3) {
+            $this->restore($prospect, 3);
         }
     }
 
@@ -92,19 +104,34 @@ class SetProspectEmailStepAction
             return;
         }
 
-        if ($step !== 2) {
+        if ($step === 2) {
+            $stepOne = ProspectEmail::query()
+                ->where('prospect_id', $prospect->id)
+                ->where('step', 1)
+                ->first();
+
+            if ($stepOne?->opened_at === null) {
+                return;
+            }
+
+            $this->scheduleNextEmail->afterOpen($stepOne);
+
             return;
         }
 
-        $stepOne = ProspectEmail::query()
+        if ($step !== 3) {
+            return;
+        }
+
+        $stepTwo = ProspectEmail::query()
             ->where('prospect_id', $prospect->id)
-            ->where('step', 1)
+            ->where('step', 2)
             ->first();
 
-        if ($stepOne?->opened_at === null) {
+        if ($stepTwo === null || ($stepTwo->opened_at === null && $stepTwo->clicked_at === null)) {
             return;
         }
 
-        $this->scheduleNextEmail->afterOpen($stepOne);
+        $this->scheduleNextEmail->afterEngagement($stepTwo);
     }
 }

@@ -18,6 +18,7 @@ class Prospect extends Model
     protected $attributes = [
         'disable_step_1' => 0,
         'disable_step_2' => 0,
+        'disable_step_3' => 0,
     ];
 
     protected $fillable = [
@@ -34,6 +35,7 @@ class Prospect extends Model
         'bounce_count',
         'disable_step_1',
         'disable_step_2',
+        'disable_step_3',
         'metadata',
     ];
 
@@ -48,6 +50,7 @@ class Prospect extends Model
             'unsubscribed_at' => 'datetime',
             'disable_step_1' => 'boolean',
             'disable_step_2' => 'boolean',
+            'disable_step_3' => 'boolean',
             'metadata' => 'array',
         ];
     }
@@ -72,6 +75,7 @@ class Prospect extends Model
         return match ($step) {
             1 => (bool) $this->disable_step_1,
             2 => (bool) $this->disable_step_2,
+            3 => (bool) $this->disable_step_2 || (bool) $this->disable_step_3,
             default => false,
         };
     }

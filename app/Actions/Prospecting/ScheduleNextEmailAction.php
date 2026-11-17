@@ -72,6 +72,10 @@ class ScheduleNextEmailAction
             return;
         }
 
+        if ($prospectEmail->prospect?->isStepDisabled(3)) {
+            return;
+        }
+
         if ($prospectEmail->sequence->emails()->where('step', 3)->exists()) {
             return;
         }
